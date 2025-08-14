@@ -1,0 +1,299 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Opciones de URL para diferentes entornos
+const API_URLS = {
+  localhost: 'http://localhost:3001/api',
+  emulator: 'http://10.0.2.2:3001/api',  // Para emuladores Android
+  device: 'http://192.168.1.100:3001/api'  // Cambia esto a la IP de tu computadora en la red
+};
+
+// Usa la URL del emulador por defecto, cambia según sea necesario
+const API_URL = API_URLS.emulator;
+
+// Reemplaza la IP anterior con la dirección IP de tu computadora en la red local
+// Puedes encontrarla ejecutando 'ipconfig' en Windows o 'ifconfig' en macOS/Linux
+
+const fetchWithToken = async (url, options = {}) => {
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log(`Usando token: ${token.substring(0, 10)}...`);
+    } else {
+      console.log('No se encontró token de autenticación');
+    }
+    
+    console.log(`Realizando petición a: ${API_URL}${url}`);
+    
+    const response = await fetch(`${API_URL}${url}`, {
+      ...options,
+      headers,
+    });
+    
+    // Intentamos parsear la respuesta como JSON
+    let data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.log('Respuesta no JSON:', text);
+      data = { message: text };
+    }
+    
+    if (!response.ok) {
+      const errorMessage = data.message || `Error ${response.status}: ${response.statusText}`;
+      console.error(`Error API (${response.status}):`, errorMessage);
+      throw new Error(errorMessage);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    // Mejorar los mensajes de error para problemas comunes
+    if (error.message === 'Network request failed') {
+      throw new Error('No se pudo conectar al servidor. Verifica tu conexión a internet y que el servidor esté en funcionamiento.');
+    }
+    
+    throw error;
+  }
+};
+
+export const api = {
+  // Autenticación
+  login: async (email, password) => {
+    console.log(`Intentando iniciar sesión con: ${email}`);
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, password }),
+      });
+      
+      console.log('Respuesta del servidor:', response.status);
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Error de inicio de sesión:', data.message);
+        throw new Error(data.message || 'Error al iniciar sesión');
+      }
+      
+      console.log('Inicio de sesión exitoso:', data.user.email);
+      return data;
+    } catch (error) {
+      console.error('Error en la petición de login:', error);
+      throw error;
+    }
+  },
+  
+  // Clientes
+  getClientes: () => fetchWithToken('/clientes'),
+  getClienteVentas: (clienteId) => fetchWithToken(`/clientes/${clienteId}/ventas`),
+  createCliente: async (clienteData) => {
+    console.log('Creando cliente con datos:', clienteData);
+    try {
+      const response = await fetchWithToken('/clientes', {
+        method: 'POST',
+        body: JSON.stringify(clienteData),
+      });
+      console.log('Respuesta de creación de cliente:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al crear cliente:', error);
+      throw error;
+    }
+  },
+  updateCliente: async (id, clienteData) => {
+    console.log(`Actualizando cliente ID ${id} con datos:`, clienteData);
+    try {
+      const response = await fetchWithToken(`/clientes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(clienteData),
+      });
+      console.log('Respuesta de actualización de cliente:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al actualizar cliente:', error);
+      throw error;
+    }
+  },
+  
+  deleteCliente: async (id) => {
+    console.log(`Eliminando cliente ID ${id}`);
+    try {
+      const response = await fetchWithToken(`/clientes/${id}`, {
+        method: 'DELETE',
+      });
+      console.log('Respuesta de eliminación de cliente:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al eliminar cliente:', error);
+      throw error;
+    }
+  },
+  
+  // Productos
+  getProductos: async () => {
+    console.log('Obteniendo lista de productos');
+    try {
+      const response = await fetchWithToken('/productos');
+      console.log('Productos obtenidos:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al obtener productos:', error);
+      throw error;
+    }
+  },
+  
+  getProducto: async (id) => {
+    console.log(`Obteniendo detalle del producto ID ${id}`);
+    try {
+      const response = await fetchWithToken(`/productos/${id}`);
+      console.log('Detalle del producto:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error al obtener producto ID ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  createProducto: async (productoData) => {
+    console.log('Creando producto con datos:', productoData);
+    try {
+      const response = await fetchWithToken('/productos', {
+        method: 'POST',
+        body: JSON.stringify(productoData),
+      });
+      console.log('Respuesta de creación de producto:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al crear producto:', error);
+      throw error;
+    }
+  },
+  
+  updateProducto: async (id, productoData) => {
+    console.log(`Actualizando producto ID ${id} con datos:`, productoData);
+    try {
+      const response = await fetchWithToken(`/productos/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(productoData),
+      });
+      console.log('Respuesta de actualización de producto:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al actualizar producto:', error);
+      throw error;
+    }
+  },
+  
+  deleteProducto: async (id) => {
+    console.log(`Eliminando producto ID ${id}`);
+    try {
+      const response = await fetchWithToken(`/productos/${id}`, {
+        method: 'DELETE',
+      });
+      console.log('Respuesta de eliminación de producto:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al eliminar producto:', error);
+      throw error;
+    }
+  },
+  
+  // Unidades de Medida
+  getUnidadesMedida: async () => {
+    console.log('Obteniendo unidades de medida');
+    try {
+      const response = await fetchWithToken('/unidades-medida');
+      console.log('Unidades de medida obtenidas:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al obtener unidades de medida:', error);
+      throw error;
+    }
+  },
+  
+  createUnidadMedida: async (unidadData) => {
+    console.log('Creando unidad de medida con datos:', unidadData);
+    try {
+      const response = await fetchWithToken('/unidades-medida', {
+        method: 'POST',
+        body: JSON.stringify(unidadData),
+      });
+      console.log('Respuesta de creación de unidad de medida:', response);
+      return response;
+    } catch (error) {
+      console.error('Error al crear unidad de medida:', error);
+      throw error;
+    }
+  },
+  
+  // Proveedores
+  getProveedores: () => fetchWithToken('/proveedores'),
+  createProveedor: (proveedorData) => {
+    return fetchWithToken('/proveedores', {
+      method: 'POST',
+      body: JSON.stringify(proveedorData),
+    });
+  },
+  
+  // Ventas
+  getVentas: () => fetchWithToken('/ventas'),
+  createVenta: (ventaData) => {
+    return fetchWithToken('/ventas', {
+      method: 'POST',
+      body: JSON.stringify(ventaData),
+    });
+  },
+  
+  // Devoluciones
+  createDevolucion: (devolucionData) => {
+    return fetchWithToken('/devoluciones', {
+      method: 'POST',
+      body: JSON.stringify(devolucionData),
+    });
+  },
+  
+  // Rutas
+  getRutas: () => fetchWithToken('/rutas'),
+  createRuta: (rutaData) => {
+    return fetchWithToken('/rutas', {
+      method: 'POST',
+      body: JSON.stringify(rutaData),
+    });
+  },
+  addClienteToRuta: (rutaId, clienteData) => {
+    return fetchWithToken(`/rutas/${rutaId}/clientes`, {
+      method: 'POST',
+      body: JSON.stringify(clienteData),
+    });
+  },
+  
+  // Cierres del día
+  getCierres: () => fetchWithToken('/cierres'),
+  createCierre: (cierreData) => {
+    return fetchWithToken('/cierres', {
+      method: 'POST',
+      body: JSON.stringify(cierreData),
+    });
+  },
+  
+  // Reportes
+  getVentasPorPeriodo: (fechaInicio, fechaFin) => {
+    return fetchWithToken(`/reportes/ventas-por-periodo?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`);
+  },
+  getProductosMasVendidos: (fechaInicio, fechaFin) => {
+    return fetchWithToken(`/reportes/productos-mas-vendidos?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`);
+  },
+  getInventarioBajo: () => fetchWithToken('/reportes/inventario-bajo'),
+};
+
+export default api;
