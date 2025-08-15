@@ -12,6 +12,7 @@ const rutasRoutes = require('./routes/rutas');
 const devolucionesRoutes = require('./routes/devoluciones');
 const unidadesRoutes = require('./routes/unidades');
 const categoriasRoutes = require('./routes/categorias');
+const usuariosRoutes = require('./routes/usuarios');
 const authRoutes = require('./routes/auth');
 
 // Cargar variables de entorno
@@ -60,12 +61,6 @@ function authenticateToken(req, res, next) {
   });
 };
 
-// Hacer disponible la función authenticateToken para los routers
-app.locals.authenticateToken = authenticateToken;
-
-// Hacer disponible la función recalcularStockTotal para los routers
-app.locals.recalcularStockTotal = recalcularStockTotal;
-
 // Función para recalcular el stock total de un producto basado en sus unidades
 async function recalcularStockTotal(connection, productoId) {
   try {
@@ -112,6 +107,12 @@ async function recalcularStockTotal(connection, productoId) {
     throw error;
   }
 }
+
+// Hacer disponible la función authenticateToken para los routers
+app.locals.authenticateToken = authenticateToken;
+
+// Hacer disponible la función recalcularStockTotal para los routers
+app.locals.recalcularStockTotal = recalcularStockTotal;
 
 // Endpoint para recalcular el stock total de todos los productos o uno específico
 app.get('/api/productos/recalcular-stock-total/:id?', authenticateToken, async (req, res) => {
@@ -213,9 +214,10 @@ app.use('/api/rutas', rutasRoutes);
 app.use('/api/devoluciones', devolucionesRoutes);
 app.use('/api/unidades', unidadesRoutes);
 app.use('/api/categorias', categoriasRoutes);
+app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/auth', authRoutes);
 
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
   
   // Recalcular el stock total para todos los productos al iniciar el servidor

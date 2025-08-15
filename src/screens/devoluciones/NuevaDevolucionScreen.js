@@ -10,7 +10,7 @@ import api from '../../services/api';
 const NuevaDevolucionScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { venta } = route.params;
+  const { venta } = route.params || {};
   
   const [loading, setLoading] = useState(true);
   const [generatingPDF, setGeneratingPDF] = useState(false);
@@ -21,6 +21,11 @@ const NuevaDevolucionScreen = () => {
   
   // Cargar los detalles de la venta desde la API
   const cargarDetallesVenta = useCallback(async () => {
+    if (!venta || !venta.id) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       console.log(`Cargando detalles de venta ID: ${venta.id}`);
@@ -60,7 +65,7 @@ const NuevaDevolucionScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [venta.id]);
+  }, [venta?.id]);
   
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -123,7 +128,7 @@ const NuevaDevolucionScreen = () => {
     const productosHTML = (devolucionData.items || []).map(item => `
       <tr>
         <td>${item.producto?.nombre || item.producto_nombre || 'Producto sin nombre'}</td>
-        <td>${item.cantidadDevolucion || 0}</td>
+        <td>${item.cantidadDevolucion || 0} ${item.unidad_nombre || 'unidad'}</td>
         <td>L. ${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
         <td>L. ${(parseFloat(item.precio_unitario || 0) * parseFloat(item.cantidadDevolucion || 0)).toFixed(2)}</td>
       </tr>
@@ -316,7 +321,7 @@ const NuevaDevolucionScreen = () => {
       
       // Preparar los datos de la devolución para la API
       const devolucionData = {
-        venta_id: parseInt(venta.id), // Asegurarnos que sea un número
+        venta_id: parseInt(venta?.id || 0), // Asegurarnos que sea un número
         usuario_id: parseInt(usuario_id), // Añadir el ID del usuario
         motivo: motivo,
         total: totalDevolucion, // Asegurarnos que el total sea un número
@@ -327,9 +332,9 @@ const NuevaDevolucionScreen = () => {
           // Añadir información adicional del producto para actualizar el stock
           producto_nombre: item.producto_nombre || item.producto?.nombre || 'Producto sin nombre',
           producto_codigo: item.producto_codigo || item.producto?.codigo || `PROD-${item.producto_id || (item.producto && item.producto.id) || Date.now()}`,
-          // Añadir información de la unidad - usar 1 como valor predeterminado (unidad base)
-          unidad_id: 1, // Usar la unidad base (generalmente ID 1) para evitar problemas con unidades no existentes
-          unidad_nombre: 'Unidad'
+          // Usar la unidad original de la venta, o 1 como fallback
+          unidad_id: item.unidad_id || 1,
+          unidad_nombre: item.unidad_nombre || 'Unidad'
         }))
       };
       
@@ -404,6 +409,32 @@ const NuevaDevolucionScreen = () => {
     }
   };
 
+  // Si no hay venta seleccionada, mostrar pantalla de selección
+  if (!venta || !venta.id) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>Seleccione una venta</Text>
+        <Text style={styles.errorText}>
+          Para crear una devolución, primero debe seleccionar una venta desde el detalle de venta.
+        </Text>
+        <Button 
+          mode="contained" 
+          onPress={() => navigation.navigate('Ventas', { screen: 'VentasList' })}
+          style={styles.errorButton}
+        >
+          Ir a Ventas
+        </Button>
+        <Button 
+          mode="outlined" 
+          onPress={() => navigation.goBack()}
+          style={[styles.errorButton, { marginTop: 10 }]}
+        >
+          Volver
+        </Button>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       {loading ? (
@@ -459,16 +490,16 @@ const NuevaDevolucionScreen = () => {
                     />
                     
                     <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.producto?.nombre || 'Producto sin nombre'}</Text>
+                      <Text style={styles.itemName}>{item.producto?.nombre || item.producto_nombre || 'Producto sin nombre'}</Text>
                       <Text style={styles.itemDetails}>
-                        Cantidad: {item.cantidad || 0} | Precio: L. {parseFloat(item.precio_unitario || 0).toFixed(2)}
+                        Cantidad: {item.cantidad || 0} {item.unidad_nombre || 'unidad'} | Precio: L. {parseFloat(item.precio_unitario || 0).toFixed(2)}
                       </Text>
                     </View>
                   </View>
                   
                   {itemsSeleccionados.some(i => i.id === item.id) && (
                     <View style={styles.cantidadContainer}>
-                      <Text style={styles.cantidadLabel}>Cantidad a devolver:</Text>
+                      <Text style={styles.cantidadLabel}>Cantidad a devolver ({item.unidad_nombre || 'unidad'}):</Text>
                       <TextInput
                         value={String(itemsSeleccionados.find(i => i.id === item.id).cantidadDevolucion)}
                         onChangeText={(text) => actualizarCantidadDevolucion(item.id, text)}
@@ -601,6 +632,31 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#555',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  errorButton: {
+    width: '100%',
+    maxWidth: 200,
   },
 });
 

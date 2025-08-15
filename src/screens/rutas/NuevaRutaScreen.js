@@ -35,6 +35,7 @@ const NuevaRutaScreen = () => {
   const [clientes, setClientes] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [loadingClientes, setLoadingClientes] = useState(false);
+  const [clienteSearch, setClienteSearch] = useState('');
   
   // Cargar clientes desde la API
   useEffect(() => {
@@ -169,6 +170,16 @@ const NuevaRutaScreen = () => {
     setClientesSeleccionados(seleccionados);
   };
 
+  // Función para filtrar clientes
+  const filteredClientes = clienteSearch === '' 
+    ? clientes
+    : clientes.filter(c => 
+        c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) || 
+        c.telefono?.includes(clienteSearch) ||
+        c.direccion?.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+        c.email?.toLowerCase().includes(clienteSearch.toLowerCase())
+      );
+
   const validateForm = () => {
     const newErrors = {};
     
@@ -210,7 +221,7 @@ const NuevaRutaScreen = () => {
       const rutaData = {
         nombre: formData.nombre,
         descripcion: formData.descripcion,
-        vendedor_id: parseInt(formData.vendedor),
+        usuario_id: parseInt(formData.vendedor), // Cambiar vendedor_id por usuario_id
         dias_visita: diasVisitaArray,
         fecha_inicio: formData.fechaInicio.toISOString().split('T')[0], // Usar la fecha seleccionada
         fecha_fin: formData.fechaFin ? formData.fechaFin.toISOString().split('T')[0] : null, // Fecha fin si está seleccionada
@@ -232,7 +243,13 @@ const NuevaRutaScreen = () => {
       Alert.alert(
         'Éxito',
         'Ruta creada correctamente',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            // Navegar de vuelta con parámetro para indicar que se debe refrescar
+            navigation.navigate('RutasList', { refresh: true, newRutaId: response.id });
+          }
+        }]
       );
     } catch (error) {
       console.error('Error al crear ruta:', error);
@@ -412,13 +429,22 @@ const NuevaRutaScreen = () => {
           Seleccione los clientes que formarán parte de esta ruta:
         </Text>
         
+        <TextInput
+          label="Buscar cliente por nombre, teléfono, email o dirección"
+          value={clienteSearch}
+          onChangeText={setClienteSearch}
+          right={<TextInput.Icon icon="magnify" />}
+          style={styles.searchInput}
+          placeholder="Escribe para buscar..."
+        />
+        
         {loadingClientes ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#0066cc" />
             <Text style={styles.loadingText}>Cargando clientes...</Text>
           </View>
-        ) : clientes.length > 0 ? (
-          clientes.map(cliente => (
+        ) : filteredClientes.length > 0 ? (
+          filteredClientes.map(cliente => (
             <View key={cliente.id} style={styles.clienteItem}>
               <Checkbox
                 status={cliente.seleccionado ? 'checked' : 'unchecked'}
@@ -426,17 +452,37 @@ const NuevaRutaScreen = () => {
               />
               <View style={styles.clienteInfo}>
                 <Text style={styles.clienteNombre}>{cliente.nombre}</Text>
-                <Text style={styles.clienteDireccion}>{cliente.direccion}</Text>
+                <View style={styles.clienteDetalles}>
+                  {cliente.direccion && (
+                    <Text style={styles.clienteDetalle}>📍 {cliente.direccion}</Text>
+                  )}
+                  {cliente.telefono && (
+                    <Text style={styles.clienteDetalle}>📞 {cliente.telefono}</Text>
+                  )}
+                  {cliente.email && (
+                    <Text style={styles.clienteDetalle}>✉️ {cliente.email}</Text>
+                  )}
+                </View>
               </View>
             </View>
           ))
         ) : (
-          <Text style={styles.noDataText}>No hay clientes disponibles</Text>
+          <Text style={styles.noDataText}>
+            {clienteSearch === '' 
+              ? 'No hay clientes disponibles'
+              : `No se encontraron clientes con "${clienteSearch}"`
+            }
+          </Text>
         )}
         
-        <Text style={styles.clientesSeleccionados}>
-          Clientes seleccionados: {clientesSeleccionados.length}
-        </Text>
+        <View style={styles.clientesContadores}>
+          <Text style={styles.clientesInfo}>
+            Mostrando: {filteredClientes.length} de {clientes.length} clientes
+          </Text>
+          <Text style={styles.clientesSeleccionados}>
+            Seleccionados: {clientesSeleccionados.length}
+          </Text>
+        </View>
       </View>
       
       <Divider style={styles.divider} />
@@ -539,6 +585,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
   },
+  searchInput: {
+    marginBottom: 16,
+  },
   clienteItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -560,9 +609,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  clienteDetalles: {
+    flexDirection: 'column',
+    marginTop: 4,
+  },
+  clienteDetalle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  clientesContadores: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  clientesInfo: {
+    fontSize: 14,
+    color: '#666',
+  },
   clientesSeleccionados: {
-    marginTop: 10,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#0066cc',
   },

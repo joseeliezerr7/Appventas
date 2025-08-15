@@ -12,6 +12,56 @@ const DetalleRutaScreen = () => {
   const [ruta, setRuta] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Función para calcular la próxima visita basada en los días programados
+  const calcularProximaVisita = (diasVisita) => {
+    if (!diasVisita) return null;
+    
+    try {
+      const dias = Array.isArray(diasVisita) ? diasVisita : JSON.parse(diasVisita);
+      if (!Array.isArray(dias) || dias.length === 0) return null;
+
+      const diasSemana = {
+        'lunes': 1, 'martes': 2, 'miercoles': 3, 'jueves': 4, 
+        'viernes': 5, 'sabado': 6, 'domingo': 0
+      };
+
+      const hoy = new Date();
+      const diaActual = hoy.getDay();
+      
+      const diasNumeros = dias.map(dia => diasSemana[dia.toLowerCase()]).filter(num => num !== undefined);
+      let proximoDia = null;
+      
+      // Buscar próximo día en esta semana
+      for (let i = diaActual + 1; i <= 6; i++) {
+        if (diasNumeros.includes(i)) {
+          proximoDia = i;
+          break;
+        }
+      }
+      
+      // Si no hay en esta semana, buscar en la próxima
+      if (proximoDia === null) {
+        for (let i = 0; i <= 6; i++) {
+          if (diasNumeros.includes(i)) {
+            proximoDia = i;
+            break;
+          }
+        }
+      }
+      
+      if (proximoDia === null) return null;
+      
+      const proximaVisita = new Date(hoy);
+      const diasHastaProxima = proximoDia >= diaActual ? proximoDia - diaActual : (7 - diaActual) + proximoDia;
+      proximaVisita.setDate(hoy.getDate() + diasHastaProxima);
+      
+      return proximaVisita.toLocaleDateString('es-HN');
+    } catch (error) {
+      console.error('Error calculando próxima visita:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     loadRutaDetalle();
   }, [rutaId]);
@@ -29,17 +79,18 @@ const DetalleRutaScreen = () => {
         id: rutaData.id,
         nombre: rutaData.nombre,
         descripcion: rutaData.descripcion || 'Sin descripción',
-        vendedor: rutaData.vendedor_nombre || 'Sin asignar',
+        vendedor: rutaData.usuario_nombre || 'Sin asignar',
+        usuario_id: rutaData.usuario_id, // Agregar el ID del usuario para edición
         estado: rutaData.estado || 'activa',
         diasVisita: rutaData.dias_visita ? (Array.isArray(rutaData.dias_visita) ? rutaData.dias_visita : JSON.parse(rutaData.dias_visita)) : [],
-        fechaInicio: rutaData.fecha_inicio ? new Date(rutaData.fecha_inicio).toISOString().split('T')[0] : 'No definida',
-        fechaFin: rutaData.fecha_fin ? new Date(rutaData.fecha_fin).toISOString().split('T')[0] : 'No definida',
-        ultimaVisita: rutaData.ultima_visita ? new Date(rutaData.ultima_visita).toISOString().split('T')[0] : null,
-        proximaVisita: rutaData.proxima_visita ? new Date(rutaData.proxima_visita).toISOString().split('T')[0] : null,
+        fechaInicio: rutaData.fecha_inicio ? rutaData.fecha_inicio : null, // Mantener formato original para edición
+        fechaFin: rutaData.fecha_fin ? rutaData.fecha_fin : null, // Mantener formato original para edición
+        ultimaVisita: rutaData.ultima_visita ? new Date(rutaData.ultima_visita).toLocaleDateString('es-HN') : null,
+        proximaVisita: calcularProximaVisita(rutaData.dias_visita),
         clientes: rutaData.clientes || [],
         visitas: rutaData.visitas || [],
-        creacion: rutaData.fecha_creacion ? new Date(rutaData.fecha_creacion).toISOString().split('T')[0] : null,
-        ultimaModificacion: rutaData.fecha_modificacion ? new Date(rutaData.fecha_modificacion).toISOString().split('T')[0] : null,
+        creacion: rutaData.creado_en ? new Date(rutaData.creado_en).toLocaleDateString('es-HN') : null,
+        ultimaModificacion: rutaData.fecha_modificacion ? new Date(rutaData.fecha_modificacion).toLocaleDateString('es-HN') : null,
         notas: rutaData.notas || 'Sin notas adicionales'
       };
       
@@ -55,8 +106,11 @@ const DetalleRutaScreen = () => {
         nombre: 'Ruta Norte (ejemplo)',
         descripcion: 'Ruta que cubre la zona norte de la ciudad, incluyendo los barrios A, B y C.',
         vendedor: 'Juan Pérez',
+        usuario_id: 1, // ID de ejemplo para el vendedor
         estado: 'activa',
         diasVisita: ['Lunes', 'Miércoles', 'Viernes'],
+        fechaInicio: '2025-01-15',
+        fechaFin: null,
         ultimaVisita: '2025-06-10',
         proximaVisita: '2025-06-17',
         clientes: [
@@ -182,20 +236,20 @@ const DetalleRutaScreen = () => {
           {ruta.clientes.map(cliente => (
             <List.Item
               key={cliente.id}
-              title={cliente.nombre}
-              description={cliente.direccion}
+              title={cliente.cliente_nombre || cliente.nombre || 'Cliente sin nombre'}
+              description={cliente.cliente_direccion || cliente.direccion || 'Sin dirección'}
               left={props => <List.Icon {...props} icon="store" />}
               right={() => (
                 <View style={styles.clienteInfo}>
-                  <Text style={styles.clienteCompra}>
-                    Última compra: {cliente.ultimaCompra || 'No registrada'}
+                  <Text style={styles.clienteOrden}>
+                    Orden: {cliente.orden || 'N/A'}
                   </Text>
-                  <Text style={styles.clienteMonto}>
-                    ${cliente.montoTotal ? cliente.montoTotal.toFixed(2) : '0.00'}
+                  <Text style={styles.clienteTelefono}>
+                    {cliente.cliente_telefono || 'Sin teléfono'}
                   </Text>
                 </View>
               )}
-              onPress={() => navigation.navigate('ClienteDetalle', { clienteId: cliente.id })}
+              onPress={() => navigation.navigate('ClienteDetalle', { clienteId: cliente.cliente_id || cliente.id })}
               style={styles.clienteItem}
             />
           ))}
@@ -299,6 +353,15 @@ const styles = StyleSheet.create({
   clienteMonto: {
     fontWeight: 'bold',
     color: '#0066cc',
+  },
+  clienteOrden: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  clienteTelefono: {
+    fontSize: 11,
+    color: '#888',
   },
   notesText: {
     fontStyle: 'italic',

@@ -7,10 +7,13 @@ router.get('/', async (req, res) => {
     const [ventas] = await req.app.locals.pool.query(`
       SELECT v.*, 
              c.nombre as cliente_nombre,
-             u.nombre as vendedor_nombre
+             u.nombre as vendedor_nombre,
+             COALESCE(SUM(vd.cantidad), 0) as total_productos
       FROM ventas v
       LEFT JOIN clientes c ON v.cliente_id = c.id
       LEFT JOIN usuarios u ON v.usuario_id = u.id
+      LEFT JOIN venta_detalles vd ON v.id = vd.venta_id
+      GROUP BY v.id, c.nombre, u.nombre
       ORDER BY v.fecha DESC
     `);
     
@@ -58,9 +61,13 @@ router.get('/:id', async (req, res) => {
     const [detalles] = await req.app.locals.pool.query(`
       SELECT vd.*, 
              p.nombre as producto_nombre,
-             p.codigo as producto_codigo
+             p.codigo as producto_codigo,
+             pu.unidad_id,
+             um.nombre as unidad_nombre
       FROM venta_detalles vd
       LEFT JOIN productos p ON vd.producto_id = p.id
+      LEFT JOIN producto_unidades pu ON vd.producto_id = pu.producto_id AND pu.es_unidad_principal = 1
+      LEFT JOIN unidades_medida um ON pu.unidad_id = um.id
       WHERE vd.venta_id = ?
     `, [id]);
     
@@ -359,13 +366,22 @@ router.put('/:id/actualizar-por-devolucion', async (req, res) => {
         totalDevuelto += subtotal;
       }
       
-      // Actualizar el total de la venta
+      // Actualizar el total de la venta y cambiar estado a devuelto
       const nuevoTotal = Math.max(0, ventaExistente[0].total - totalDevuelto);
-      await connection.query(`
-        UPDATE ventas SET total = ? WHERE id = ?
-      `, [nuevoTotal, id]);
       
-      console.log(`Total de venta ${id} actualizado: ${ventaExistente[0].total} -> ${nuevoTotal}`);
+      // Determinar el nuevo estado: si el total llega a 0, es "devuelto", sino "parcialmente_devuelto"
+      let nuevoEstado = ventaExistente[0].estado;
+      if (nuevoTotal === 0) {
+        nuevoEstado = 'devuelto';
+      } else if (totalDevuelto > 0) {
+        nuevoEstado = 'parcialmente_devuelto';
+      }
+      
+      await connection.query(`
+        UPDATE ventas SET total = ?, estado = ? WHERE id = ?
+      `, [nuevoTotal, nuevoEstado, id]);
+      
+      console.log(`Venta ${id} actualizada: total ${ventaExistente[0].total} -> ${nuevoTotal}, estado -> ${nuevoEstado}`);
       
       // Confirmar transacción
       await connection.commit();

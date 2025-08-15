@@ -64,11 +64,13 @@ const NuevaVentaScreen = () => {
   }, []);
 
   const filteredClientes = clienteSearch === '' 
-    ? clientes 
+    ? clientes.slice(0, 10) // Mostrar solo los primeros 10 clientes cuando no hay búsqueda
     : clientes.filter(c => 
         c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) || 
-        c.telefono.includes(clienteSearch)
-      );
+        c.telefono?.includes(clienteSearch) ||
+        c.direccion?.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+        c.email?.toLowerCase().includes(clienteSearch.toLowerCase())
+      ).slice(0, 20); // Limitar a 20 resultados
 
   const filteredProductos = productoSearch === '' 
     ? productos 
@@ -81,6 +83,17 @@ const NuevaVentaScreen = () => {
     setVenta({ ...venta, cliente });
     setShowClientesList(false);
     setClienteSearch('');
+  };
+
+  const handleClienteSearchFocus = () => {
+    setShowClientesList(true);
+  };
+
+  const handleClienteSearchBlur = () => {
+    // Delay para permitir que el onPress del item funcione antes de cerrar
+    setTimeout(() => {
+      setShowClientesList(false);
+    }, 150);
   };
 
   const cargarUnidadesProducto = async (producto) => {
@@ -439,16 +452,15 @@ const NuevaVentaScreen = () => {
         notas: venta.notas
       };
       
-      console.log('Datos de venta a enviar:', ventaData);
-      
       // Enviar los datos al backend
       const response = await api.createVenta(ventaData);
-      console.log('Respuesta del servidor:', response);
       
-      if (response && response.venta_id) {
+      if (response && (response.id || response.id === 0)) {
+        Alert.alert('Éxito', 'Venta guardada correctamente');
+        
         // Crear datos para la factura
         const facturaInfo = {
-          venta_id: response.venta_id,
+          venta_id: response.id || response.venta_id,
           fecha: new Date().toLocaleDateString(),
           hora: new Date().toLocaleTimeString(),
           cliente: venta.cliente,
@@ -461,11 +473,24 @@ const NuevaVentaScreen = () => {
         
         setFacturaData(facturaInfo);
         setShowFacturaModal(true);
+        
+        // Limpiar todos los campos después de guardar la venta
+        setVenta({
+          cliente: null,
+          items: [],
+          fecha: new Date().toISOString(),
+          total: 0,
+          metodo_pago: 'Efectivo',
+          notas: '',
+        });
+        setProductoSearch('');
+        setClienteSearch('');
+        setShowClientesList(false);
+        setShowProductosList(false);
       } else {
         Alert.alert('Error', 'No se pudo guardar la venta. Intente nuevamente.');
       }
     } catch (error) {
-      console.error('Error al guardar venta:', error);
       Alert.alert('Error', `No se pudo guardar la venta: ${error.message}`);
     } finally {
       setLoading(false);
@@ -544,29 +569,72 @@ const NuevaVentaScreen = () => {
           ) : (
             <View>
               <TextInput
-                label="Buscar cliente"
+                label="Buscar cliente por nombre, teléfono, email o dirección"
                 value={clienteSearch}
                 onChangeText={setClienteSearch}
-                onFocus={() => setShowClientesList(true)}
+                onFocus={handleClienteSearchFocus}
+                onBlur={handleClienteSearchBlur}
                 right={<TextInput.Icon icon="magnify" />}
                 style={styles.searchInput}
+                placeholder="Escribe para buscar..."
               />
               
               {showClientesList && (
                 <Card style={styles.dropdownCard}>
-                  {filteredClientes.length > 0 ? (
-                    filteredClientes.map(cliente => (
-                      <List.Item
-                        key={cliente.id}
-                        title={cliente.nombre}
-                        description={cliente.telefono}
-                        onPress={() => handleSelectCliente(cliente)}
-                        style={styles.dropdownItem}
-                      />
-                    ))
-                  ) : (
-                    <Text style={styles.noResultsText}>No se encontraron clientes</Text>
-                  )}
+                  <ScrollView style={styles.clientesList} nestedScrollEnabled>
+                    {filteredClientes.length > 0 ? (
+                      <>
+                        {clienteSearch === '' && (
+                          <View style={styles.dropdownHeader}>
+                            <Text style={styles.dropdownHeaderText}>
+                              Selecciona un cliente (mostrando {filteredClientes.length} de {clientes.length})
+                            </Text>
+                          </View>
+                        )}
+                        {filteredClientes.map(cliente => (
+                          <TouchableOpacity
+                            key={cliente.id}
+                            onPress={() => handleSelectCliente(cliente)}
+                            style={styles.clienteItem}
+                          >
+                            <View style={styles.clienteInfo}>
+                              <Text style={styles.clienteNombre}>{cliente.nombre}</Text>
+                              <View style={styles.clienteDetalles}>
+                                {cliente.telefono && (
+                                  <Text style={styles.clienteDetalle}>
+                                    📞 {cliente.telefono}
+                                  </Text>
+                                )}
+                                {cliente.email && (
+                                  <Text style={styles.clienteDetalle}>
+                                    ✉️ {cliente.email}
+                                  </Text>
+                                )}
+                                {cliente.direccion && (
+                                  <Text style={styles.clienteDetalle}>
+                                    📍 {cliente.direccion}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </>
+                    ) : (
+                      <View style={styles.noResultsContainer}>
+                        <Text style={styles.noResultsText}>
+                          {clienteSearch === '' ? 'No hay clientes registrados' : `No se encontraron clientes con "${clienteSearch}"`}
+                        </Text>
+                        <Button 
+                          mode="outlined" 
+                          onPress={() => navigation.navigate('Clientes')}
+                          style={styles.addClienteButton}
+                        >
+                          Agregar Nuevo Cliente
+                        </Button>
+                      </View>
+                    )}
+                  </ScrollView>
                 </Card>
               )}
             </View>
@@ -997,9 +1065,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   dropdownHeaderText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#666',
   },
   closeDropdownButton: {
     padding: 4,
@@ -1067,6 +1135,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 16,
     color: '#666',
+  },
+  clientesList: {
+    maxHeight: 280,
+  },
+  clienteItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  clienteDetalles: {
+    flexDirection: 'column',
+    marginTop: 4,
+  },
+  clienteDetalle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  addClienteButton: {
+    marginTop: 10,
   },
   clienteSeleccionado: {
     flexDirection: 'row',

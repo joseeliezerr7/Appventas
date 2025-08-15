@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, ActivityIndicator, Button, Divider } from 'react-native-paper';
+import { Text, Card, ActivityIndicator, Button, Divider, Chip } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -14,6 +15,24 @@ const DetalleVentaScreen = () => {
   const [loading, setLoading] = useState(true);
   const [venta, setVenta] = useState(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+
+  const getEstadoColor = (estado) => {
+    switch (estado) {
+      case 'completada': return '#28a745';
+      case 'cancelada': return '#dc3545';
+      case 'pendiente': return '#ffc107';
+      default: return '#6c757d';
+    }
+  };
+
+  const getEstadoIcon = (estado) => {
+    switch (estado) {
+      case 'completada': return 'checkmark-circle';
+      case 'cancelada': return 'close-circle';
+      case 'pendiente': return 'time';
+      default: return 'help-circle';
+    }
+  };
 
   const loadVentaDetalle = useCallback(async () => {
     try {
@@ -81,7 +100,7 @@ const DetalleVentaScreen = () => {
     const productosHTML = (ventaData.detalles || ventaData.items || []).map(item => `
       <tr>
         <td>${item.producto_nombre || (item.producto && item.producto.nombre) || 'Producto sin nombre'}</td>
-        <td>${item.cantidad}</td>
+        <td>${item.cantidad} ${item.unidad_nombre || 'unidad'}</td>
         <td>L. ${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
         <td>L. ${parseFloat(item.subtotal || 0).toFixed(2)}</td>
       </tr>
@@ -280,31 +299,95 @@ const DetalleVentaScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <Card style={styles.card}>
-        <Card.Title title={`Venta #${venta.id}`} />
+        <Card.Title 
+          title={`Venta #${venta.id}`}
+          subtitle="Información de la Venta"
+          right={(props) => (
+            <Chip 
+              {...props}
+              style={[styles.estadoChip, { backgroundColor: getEstadoColor(venta.estado) }]}
+              textStyle={styles.estadoChipText}
+              icon={() => <Ionicons name={getEstadoIcon(venta.estado)} size={16} color="white" />}
+            >
+              {venta.estado?.toUpperCase() || 'DESCONOCIDO'}
+            </Chip>
+          )}
+        />
         <Card.Content>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Fecha:</Text>
-            <Text style={styles.infoValue}>{venta.fecha}</Text>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="calendar" size={16} color="#666" />
+              <Text style={styles.infoLabel}>Fecha:</Text>
+            </View>
+            <Text style={styles.infoValue}>{new Date(venta.fecha).toLocaleDateString('es-HN', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</Text>
           </View>
           
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Cliente:</Text>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="person" size={16} color="#666" />
+              <Text style={styles.infoLabel}>Cliente:</Text>
+            </View>
             <Text style={styles.infoValue}>{venta.cliente?.nombre || venta.cliente_nombre || 'No especificado'}</Text>
           </View>
+
+          {(venta.cliente?.direccion || venta.cliente_direccion) && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconContainer}>
+                <Ionicons name="location" size={16} color="#666" />
+                <Text style={styles.infoLabel}>Dirección:</Text>
+              </View>
+              <Text style={styles.infoValue}>{venta.cliente?.direccion || venta.cliente_direccion}</Text>
+            </View>
+          )}
+
+          {(venta.cliente?.telefono || venta.cliente_telefono) && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconContainer}>
+                <Ionicons name="call" size={16} color="#666" />
+                <Text style={styles.infoLabel}>Teléfono:</Text>
+              </View>
+              <Text style={styles.infoValue}>{venta.cliente?.telefono || venta.cliente_telefono}</Text>
+            </View>
+          )}
           
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Vendedor:</Text>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="business" size={16} color="#666" />
+              <Text style={styles.infoLabel}>Vendedor:</Text>
+            </View>
             <Text style={styles.infoValue}>{venta.usuario?.nombre || venta.vendedor_nombre || 'No especificado'}</Text>
           </View>
           
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Método de Pago:</Text>
-            <Text style={styles.infoValue}>{venta.metodo_pago}</Text>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name={venta.metodo_pago === 'efectivo' ? 'cash' : 'card'} size={16} color="#666" />
+              <Text style={styles.infoLabel}>Método de Pago:</Text>
+            </View>
+            <Text style={styles.infoValue}>{venta.metodo_pago?.toUpperCase() || 'EFECTIVO'}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="cube" size={16} color="#666" />
+              <Text style={styles.infoLabel}>Total Productos:</Text>
+            </View>
+            <Text style={styles.infoValue}>
+              {(venta.detalles || venta.items || []).reduce((total, item) => total + parseInt(item.cantidad || 0), 0)} productos
+            </Text>
           </View>
           
           {venta.notas && (
             <View style={styles.notasContainer}>
-              <Text style={styles.notasLabel}>Notas:</Text>
+              <View style={styles.infoIconContainer}>
+                <Ionicons name="document-text" size={16} color="#666" />
+                <Text style={styles.notasLabel}>Notas:</Text>
+              </View>
               <Text style={styles.notasText}>{venta.notas}</Text>
             </View>
           )}
@@ -319,7 +402,7 @@ const DetalleVentaScreen = () => {
               <View style={styles.itemRow}>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.producto_nombre || (item.producto && item.producto.nombre) || 'Producto sin nombre'}</Text>
-                  <Text style={styles.itemPrice}>L. {item.precio_unitario ? parseFloat(item.precio_unitario).toFixed(2) : '0.00'} x {item.cantidad}</Text>
+                  <Text style={styles.itemPrice}>L. {item.precio_unitario ? parseFloat(item.precio_unitario).toFixed(2) : '0.00'} x {item.cantidad} {item.unidad_nombre || 'unidad'}</Text>
                 </View>
                 <Text style={styles.itemSubtotal}>L. {item.subtotal ? parseFloat(item.subtotal).toFixed(2) : '0.00'}</Text>
               </View>
@@ -401,18 +484,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     elevation: 2,
   },
+  estadoChip: {
+    marginRight: 16,
+  },
+  estadoChipText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  infoIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 140,
   },
   infoLabel: {
-    width: 100,
     fontWeight: 'bold',
     color: '#666',
+    marginLeft: 6,
   },
   infoValue: {
     flex: 1,
     color: '#333',
+    fontSize: 14,
   },
   notasContainer: {
     marginTop: 8,
@@ -424,6 +522,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
     color: '#666',
+    marginLeft: 6,
   },
   notasText: {
     color: '#333',

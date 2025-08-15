@@ -122,6 +122,45 @@ const VentasScreen = () => {
     applyFilters(ventas, searchQuery, filter);
   };
 
+  const getEstadoColor = (estado) => {
+    switch (estado) {
+      case 'completada': return '#28a745';
+      case 'cancelada': return '#dc3545';
+      case 'pendiente': return '#ffc107';
+      default: return '#6c757d';
+    }
+  };
+
+  const getEstadoIcon = (estado) => {
+    switch (estado) {
+      case 'completada': return 'checkmark-circle';
+      case 'cancelada': return 'close-circle';
+      case 'pendiente': return 'time';
+      default: return 'help-circle';
+    }
+  };
+
+  const formatFecha = (fecha) => {
+    const date = new Date(fecha);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return `Hoy ${date.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return `Ayer ${date.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return date.toLocaleDateString('es-HN', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
+
   const renderVentaItem = ({ item }) => (
     <TouchableOpacity 
       onPress={() => navigation.navigate('DetalleVenta', { venta: item })}
@@ -129,18 +168,46 @@ const VentasScreen = () => {
       <Card style={styles.ventaCard}>
         <Card.Content>
           <View style={styles.ventaHeader}>
-            <View>
-              <Text style={styles.ventaId}>Venta #{item.id}</Text>
-              <Text style={styles.ventaCliente}>{item.cliente_nombre || (item.cliente && item.cliente.nombre) || 'Cliente desconocido'}</Text>
+            <View style={styles.ventaInfo}>
+              <View style={styles.ventaIdRow}>
+                <Text style={styles.ventaId}>Venta #{item.id}</Text>
+                <View style={[styles.estadoChip, { backgroundColor: getEstadoColor(item.estado) }]}>
+                  <Ionicons 
+                    name={getEstadoIcon(item.estado)} 
+                    size={12} 
+                    color="white" 
+                    style={styles.estadoIcon}
+                  />
+                  <Text style={styles.estadoText}>{item.estado?.toUpperCase() || 'DESCONOCIDO'}</Text>
+                </View>
+              </View>
+              <Text style={styles.ventaCliente}>
+                <Ionicons name="person" size={14} color="#666" /> {item.cliente_nombre || 'Cliente desconocido'}
+              </Text>
+              {item.vendedor_nombre && (
+                <Text style={styles.ventaVendedor}>
+                  <Ionicons name="business" size={14} color="#666" /> {item.vendedor_nombre}
+                </Text>
+              )}
             </View>
-            <Text style={styles.ventaTotal}>L. {parseFloat(item.total).toFixed(2)}</Text>
+            <View style={styles.ventaTotalContainer}>
+              <Text style={styles.ventaTotal}>L. {parseFloat(item.total).toFixed(2)}</Text>
+              <Text style={styles.metodoPago}>
+                <Ionicons name={item.metodo_pago === 'efectivo' ? 'cash' : 'card'} size={12} color="#666" /> 
+                {item.metodo_pago?.toUpperCase() || 'EFECTIVO'}
+              </Text>
+            </View>
           </View>
           
           <Divider style={styles.divider} />
           
           <View style={styles.ventaFooter}>
-            <Text style={styles.ventaFecha}>{item.fecha}</Text>
-            <Text style={styles.ventaItems}>{item.detalles && item.detalles.length > 0 ? item.detalles.reduce((total, detalle) => total + parseInt(detalle.cantidad), 0) : 0} productos</Text>
+            <Text style={styles.ventaFecha}>
+              <Ionicons name="calendar" size={12} color="#888" /> {formatFecha(item.fecha)}
+            </Text>
+            <Text style={styles.ventaItems}>
+              <Ionicons name="cube" size={12} color="#888" /> {parseInt(item.total_productos || 0)} productos
+            </Text>
           </View>
         </Card.Content>
       </Card>
@@ -245,26 +312,71 @@ const styles = StyleSheet.create({
   },
   ventaCard: {
     elevation: 2,
+    marginBottom: 2,
   },
   ventaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  ventaInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  ventaIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   ventaId: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+    marginRight: 8,
+  },
+  estadoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  estadoIcon: {
+    marginRight: 3,
+  },
+  estadoText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
   },
   ventaCliente: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginTop: 2,
+    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ventaVendedor: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ventaTotalContainer: {
+    alignItems: 'flex-end',
   },
   ventaTotal: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#28a745',
+    marginBottom: 2,
+  },
+  metodoPago: {
+    fontSize: 11,
+    color: '#666',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   divider: {
     marginVertical: 8,

@@ -1,6 +1,120 @@
 const express = require('express');
 const router = express.Router();
 
+// PUT /api/productos/devolucion/actualizar-stock - Actualizar stock cuando hay una devolución
+router.put('/devolucion/actualizar-stock', async (req, res) => {
+  console.log('=== ENDPOINT ACTUALIZAR STOCK POR DEVOLUCION ===');
+  console.log('Datos recibidos:', req.body);
+  try {
+    const { items, devolucion_id, venta_id } = req.body;
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'No se proporcionaron items para actualizar el stock' });
+    }
+    
+    // Iniciar transacción
+    const connection = await req.app.locals.pool.getConnection();
+    await connection.beginTransaction();
+    
+    try {
+      // Procesar cada item devuelto
+      for (const item of items) {
+        const { producto_id, cantidad, unidad_id } = item;
+        
+        if (!producto_id || !cantidad || cantidad <= 0) {
+          console.warn(`Item inválido en devolución ${devolucion_id}:`, item);
+          continue;
+        }
+        
+        // Verificar que el producto existe
+        const [productos] = await connection.query(`
+          SELECT * FROM productos WHERE id = ?
+        `, [producto_id]);
+        
+        if (productos.length === 0) {
+          console.warn(`Producto ${producto_id} no encontrado para devolución ${devolucion_id}`);
+          continue;
+        }
+        
+        // Si hay unidad_id específica, actualizar el stock de esa unidad
+        if (unidad_id) {
+          // Verificar que la unidad existe para el producto
+          const [unidadProducto] = await connection.query(`
+            SELECT * FROM producto_unidades 
+            WHERE producto_id = ? AND unidad_id = ?
+          `, [producto_id, unidad_id]);
+          
+          if (unidadProducto.length > 0) {
+            // Actualizar stock de la unidad específica
+            await connection.query(`
+              UPDATE producto_unidades 
+              SET stock = stock + ?
+              WHERE producto_id = ? AND unidad_id = ?
+            `, [cantidad, producto_id, unidad_id]);
+            
+            console.log(`Stock actualizado para producto ${producto_id}, unidad ${unidad_id}: +${cantidad} unidades (devolución ${devolucion_id})`);
+            
+            // Recalcular stock total después de actualizar la unidad específica
+            console.log('Verificando función recalcularStockTotal:', typeof req.app.locals.recalcularStockTotal);
+            if (typeof req.app.locals.recalcularStockTotal === 'function') {
+              console.log(`Llamando recalcularStockTotal para producto ${producto_id}`);
+              await req.app.locals.recalcularStockTotal(connection, producto_id);
+              console.log(`recalcularStockTotal completado para producto ${producto_id}`);
+            } else {
+              console.error('recalcularStockTotal no está disponible como función');
+            }
+          } else {
+            console.warn(`Unidad ${unidad_id} no encontrada para producto ${producto_id}, actualizando stock general`);
+            // Si no existe la unidad específica, actualizar stock general
+            await connection.query(`
+              UPDATE productos 
+              SET stock = stock + ?
+              WHERE id = ?
+            `, [cantidad, producto_id]);
+            
+            // Recalcular stock total después de actualizar el stock general
+            if (typeof req.app.locals.recalcularStockTotal === 'function') {
+              await req.app.locals.recalcularStockTotal(connection, producto_id);
+            }
+          }
+        } else {
+          // Si no hay unidad específica, actualizar stock general del producto
+          await connection.query(`
+            UPDATE productos 
+            SET stock = stock + ?
+            WHERE id = ?
+          `, [cantidad, producto_id]);
+          
+          console.log(`Stock general actualizado para producto ${producto_id}: +${cantidad} unidades (devolución ${devolucion_id})`);
+          
+          // Recalcular stock total después de actualizar el stock general
+          if (typeof req.app.locals.recalcularStockTotal === 'function') {
+            await req.app.locals.recalcularStockTotal(connection, producto_id);
+          }
+        }
+      }
+      
+      // Confirmar transacción
+      await connection.commit();
+      connection.release();
+      
+      res.status(200).json({ 
+        message: `Stock actualizado correctamente para ${items.length} productos`,
+        devolucion_id: devolucion_id,
+        items_procesados: items.length
+      });
+    } catch (error) {
+      // Revertir transacción en caso de error
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error al actualizar stock por devolución:', error);
+    res.status(500).json({ message: 'Error al actualizar stock por devolución', error: error.message });
+  }
+});
+
 // GET /api/productos - Obtener todos los productos
 router.get('/', async (req, res) => {
   try {

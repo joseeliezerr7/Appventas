@@ -395,7 +395,7 @@ const api = {
       
       console.log('Enviando items para actualizar stock:', JSON.stringify(itemsConInfo, null, 2));
       
-      await fetchWithToken('/productos/actualizar-stock-por-devolucion', {
+      await fetchWithToken('/productos/devolucion/actualizar-stock', {
         method: 'PUT',
         body: JSON.stringify({
           items: itemsConInfo,

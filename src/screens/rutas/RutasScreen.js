@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { Text, Card, Searchbar, ActivityIndicator, Chip, Divider } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 
 const RutasScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [searchQuery, setSearchQuery] = useState('');
   const [rutas, setRutas] = useState([]);
   const [filteredRutas, setFilteredRutas] = useState([]);
@@ -14,8 +15,64 @@ const RutasScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [filterType, setFilterType] = useState('todas');
 
-  const loadRutas = async () => {
+  // Función para calcular la próxima visita basada en los días programados
+  const calcularProximaVisita = (diasVisita) => {
+    if (!diasVisita || !Array.isArray(diasVisita) || diasVisita.length === 0) {
+      return null;
+    }
+
+    const diasSemana = {
+      'lunes': 1,
+      'martes': 2,
+      'miercoles': 3,
+      'jueves': 4,
+      'viernes': 5,
+      'sabado': 6,
+      'domingo': 0
+    };
+
+    const hoy = new Date();
+    const diaActual = hoy.getDay(); // 0 = domingo, 1 = lunes, etc.
+    
+    // Convertir días de visita a números
+    const diasNumeros = diasVisita.map(dia => diasSemana[dia.toLowerCase()]).filter(num => num !== undefined);
+    
+    // Buscar el próximo día de visita
+    let proximoDia = null;
+    
+    // Primero buscar en los días restantes de esta semana
+    for (let i = diaActual + 1; i <= 6; i++) {
+      if (diasNumeros.includes(i)) {
+        proximoDia = i;
+        break;
+      }
+    }
+    
+    // Si no encontró en esta semana, buscar desde domingo de la próxima semana
+    if (proximoDia === null) {
+      for (let i = 0; i <= 6; i++) {
+        if (diasNumeros.includes(i)) {
+          proximoDia = i;
+          break;
+        }
+      }
+    }
+    
+    if (proximoDia === null) return null;
+    
+    // Calcular la fecha de la próxima visita
+    const proximaVisita = new Date(hoy);
+    const diasHastaProxima = proximoDia >= diaActual ? proximoDia - diaActual : (7 - diaActual) + proximoDia;
+    proximaVisita.setDate(hoy.getDate() + diasHastaProxima);
+    
+    return proximaVisita.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+  };
+
+  const loadRutas = async (showLoader = true) => {
     try {
+      if (showLoader) {
+        setLoading(true);
+      }
       // Obtener datos del backend
       const data = await api.getRutas();
       console.log('Rutas cargadas:', data.length);
@@ -41,31 +98,31 @@ const RutasScreen = () => {
         
         // 2. Determinar el nombre del vendedor
         let vendedorNombre = 'Sin asignar';
-        if (rutaDetallada.vendedor_nombre) {
-          vendedorNombre = rutaDetallada.vendedor_nombre;
+        if (rutaDetallada.usuario_nombre) {
+          vendedorNombre = rutaDetallada.usuario_nombre;
+        } else if (ruta.usuario_nombre) {
+          vendedorNombre = ruta.usuario_nombre;
         }
         
         // 3. Determinar el total de clientes
         let totalClientes = 0;
-        if (rutaDetallada.total_clientes !== undefined && rutaDetallada.total_clientes !== null) {
-          totalClientes = parseInt(rutaDetallada.total_clientes) || 0;
+        if (rutaDetallada.clientes && Array.isArray(rutaDetallada.clientes)) {
+          totalClientes = rutaDetallada.clientes.length;
+        }
+
+        // 4. Calcular próxima visita basada en dias_visita
+        let proximaVisita = null;
+        try {
+          if (ruta.dias_visita) {
+            const diasVisita = JSON.parse(ruta.dias_visita);
+            proximaVisita = calcularProximaVisita(diasVisita);
+          }
+        } catch (error) {
+          console.error('Error al parsear dias_visita:', error);
         }
         
-        // 4. Verificar si el total de clientes es un número válido
-        if (isNaN(totalClientes)) {
-          console.log(`Ruta ${ruta.id}: total_clientes no es un número válido, usando 0`);
-          totalClientes = 0;
-        }
-        
-        // 5. Log detallado para depuración
-        console.log(`Ruta ${ruta.id} procesada:`, {
-          id: ruta.id,
-          nombre: ruta.nombre,
-          vendedor_nombre: rutaDetallada.vendedor_nombre,
-          vendedor_procesado: vendedorNombre,
-          total_clientes: rutaDetallada.total_clientes,
-          total_procesado: totalClientes
-        });
+        // 5. Log para verificar el procesamiento
+        console.log(`Ruta ${ruta.id}: ${vendedorNombre}, ${totalClientes} clientes, próxima: ${proximaVisita}`);
         
         // 6. Crear objeto formateado para la vista
         rutasFormateadas.push({
@@ -75,8 +132,9 @@ const RutasScreen = () => {
           clientes: totalClientes,
           estado: ruta.estado || 'activa',
           ultimaVisita: ruta.ultima_visita ? new Date(ruta.ultima_visita).toISOString().split('T')[0] : null,
-          proximaVisita: ruta.proxima_visita ? new Date(ruta.proxima_visita).toISOString().split('T')[0] : null,
-          descripcion: ruta.descripcion
+          proximaVisita: proximaVisita,
+          descripcion: ruta.descripcion,
+          diasVisita: ruta.dias_visita
         });
       }
       
@@ -114,9 +172,25 @@ const RutasScreen = () => {
     }
   };
 
+  // Cargar rutas al inicializar la pantalla
   useEffect(() => {
     loadRutas();
   }, []);
+
+  // Escuchar cuando la pantalla reciba el foco y verificar parámetros
+  useFocusEffect(
+    React.useCallback(() => {
+      // Verificar si se pasó el parámetro refresh
+      if (route.params?.refresh) {
+        console.log('Refrescando rutas después de crear nueva ruta');
+        // No mostrar loader completo, solo refrescar datos
+        loadRutas(false);
+        
+        // Limpiar el parámetro para evitar refrescar múltiples veces
+        navigation.setParams({ refresh: undefined, newRutaId: undefined });
+      }
+    }, [route.params?.refresh])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -14,13 +14,34 @@ const EditarRutaScreen = () => {
   const [descripcion, setDescripcion] = useState(ruta.descripcion || '');
   const [estado, setEstado] = useState(ruta.estado || 'activa');
   const [notas, setNotas] = useState(ruta.notas || '');
-  const [diasVisita, setDiasVisita] = useState(ruta.diasVisita || []);
-  const [fechaInicio, setFechaInicio] = useState(ruta.fechaInicio ? new Date(ruta.fechaInicio) : new Date());
-  const [fechaFin, setFechaFin] = useState(ruta.fechaFin ? new Date(ruta.fechaFin) : new Date());
+  const [diasVisita, setDiasVisita] = useState(() => {
+    if (!ruta.diasVisita) return [];
+    if (Array.isArray(ruta.diasVisita)) return ruta.diasVisita;
+    try {
+      return typeof ruta.diasVisita === 'string' ? JSON.parse(ruta.diasVisita) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [fechaInicio, setFechaInicio] = useState(() => {
+    if (!ruta.fechaInicio) return new Date();
+    return new Date(ruta.fechaInicio);
+  });
+  const [fechaFin, setFechaFin] = useState(() => {
+    if (!ruta.fechaFin) return null;
+    return new Date(ruta.fechaFin);
+  });
   const [showInicioDatePicker, setShowInicioDatePicker] = useState(false);
   const [showFinDatePicker, setShowFinDatePicker] = useState(false);
+  const [vendedorId, setVendedorId] = useState(() => {
+    console.log('Datos de la ruta recibida:', ruta);
+    console.log('usuario_id:', ruta.usuario_id);
+    console.log('vendedor:', ruta.vendedor);
+    return ruta.usuario_id ? ruta.usuario_id.toString() : '';
+  });
   const [clientesSeleccionados, setClientesSeleccionados] = useState(ruta.clientes || []);
   const [todosClientes, setTodosClientes] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const diasSemana = [
@@ -35,6 +56,7 @@ const EditarRutaScreen = () => {
 
   useEffect(() => {
     cargarClientes();
+    cargarVendedores();
   }, []);
 
   const cargarClientes = async () => {
@@ -47,6 +69,19 @@ const EditarRutaScreen = () => {
     }
   };
 
+  const cargarVendedores = async () => {
+    try {
+      const usuarios = await api.getUsuarios();
+      const vendedoresActivos = usuarios.filter(usuario => 
+        usuario.rol === 'vendedor' && usuario.activo === 1
+      );
+      setVendedores(vendedoresActivos);
+    } catch (error) {
+      console.error('Error al cargar vendedores:', error);
+      Alert.alert('Error', 'No se pudieron cargar los vendedores');
+    }
+  };
+
   const toggleDiaVisita = (dia) => {
     if (diasVisita.includes(dia)) {
       setDiasVisita(diasVisita.filter(d => d !== dia));
@@ -56,8 +91,9 @@ const EditarRutaScreen = () => {
   };
 
   const toggleClienteSeleccionado = (cliente) => {
-    if (clientesSeleccionados.some(c => c.id === cliente.id)) {
-      setClientesSeleccionados(clientesSeleccionados.filter(c => c.id !== cliente.id));
+    const clienteId = cliente.cliente_id || cliente.id;
+    if (clientesSeleccionados.some(c => (c.cliente_id || c.id) === clienteId)) {
+      setClientesSeleccionados(clientesSeleccionados.filter(c => (c.cliente_id || c.id) !== clienteId));
     } else {
       setClientesSeleccionados([...clientesSeleccionados, cliente]);
     }
@@ -83,6 +119,11 @@ const EditarRutaScreen = () => {
       return;
     }
 
+    if (!vendedorId) {
+      Alert.alert('Error', 'Debe seleccionar un vendedor');
+      return;
+    }
+
     if (diasVisita.length === 0) {
       Alert.alert('Error', 'Debe seleccionar al menos un día de visita');
       return;
@@ -97,15 +138,18 @@ const EditarRutaScreen = () => {
       setLoading(true);
       
       const rutaActualizada = {
-        id: ruta.id,
         nombre,
         descripcion,
+        usuario_id: parseInt(vendedorId),
         estado,
         notas,
         dias_visita: diasVisita,
         fecha_inicio: fechaInicio.toISOString().split('T')[0],
-        fecha_fin: fechaFin.toISOString().split('T')[0],
-        clientes: clientesSeleccionados.map(c => c.id)
+        fecha_fin: fechaFin ? fechaFin.toISOString().split('T')[0] : null,
+        clientes: clientesSeleccionados.map(c => ({
+          cliente_id: c.cliente_id || c.id,
+          orden: c.orden || 1
+        }))
       };
 
       console.log('Actualizando ruta:', rutaActualizada);
@@ -113,11 +157,11 @@ const EditarRutaScreen = () => {
       await api.updateRuta(ruta.id, rutaActualizada);
       
       Alert.alert('Éxito', 'Ruta actualizada correctamente', [
-        { text: 'OK', onPress: () => navigation.navigate('RutasList') }
+        { text: 'OK', onPress: () => navigation.navigate('RutasList', { refresh: true }) }
       ]);
     } catch (error) {
       console.error('Error al actualizar ruta:', error);
-      Alert.alert('Error', 'No se pudo actualizar la ruta');
+      Alert.alert('Error', 'No se pudo actualizar la ruta: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
@@ -142,6 +186,21 @@ const EditarRutaScreen = () => {
         style={styles.input}
         multiline
       />
+
+      <Text style={styles.sectionTitle}>Vendedor asignado</Text>
+      <View style={styles.vendedorContainer}>
+        {vendedores.map((vendedor) => (
+          <Chip
+            key={vendedor.id}
+            selected={vendedorId === vendedor.id.toString()}
+            onPress={() => setVendedorId(vendedor.id.toString())}
+            style={styles.vendedorChip}
+            selectedColor="#0066cc"
+          >
+            {vendedor.nombre}
+          </Chip>
+        ))}
+      </View>
       
       <Text style={styles.sectionTitle}>Fecha de inicio</Text>
       <Button 
@@ -167,12 +226,12 @@ const EditarRutaScreen = () => {
         onPress={() => setShowFinDatePicker(true)}
         style={styles.dateButton}
       >
-        {fechaFin.toLocaleDateString()}
+        {fechaFin ? fechaFin.toLocaleDateString() : 'Seleccionar fecha'}
       </Button>
       
       {showFinDatePicker && (
         <DateTimePicker
-          value={fechaFin}
+          value={fechaFin || new Date()}
           mode="date"
           display="default"
           onChange={handleFinDateChange}
@@ -213,6 +272,35 @@ const EditarRutaScreen = () => {
           Inactiva
         </Chip>
       </View>
+
+      <Divider style={styles.divider} />
+      
+      <Text style={styles.sectionTitle}>Clientes en la ruta</Text>
+      <Text style={styles.subtitle}>
+        Clientes seleccionados: {clientesSeleccionados.length}
+      </Text>
+      
+      <View style={styles.clientesContainer}>
+        {todosClientes.map((cliente) => {
+          const isSelected = clientesSeleccionados.some(c => 
+            (c.cliente_id || c.id) === (cliente.cliente_id || cliente.id)
+          );
+          return (
+            <View key={cliente.id} style={styles.clienteItem}>
+              <Checkbox
+                status={isSelected ? 'checked' : 'unchecked'}
+                onPress={() => toggleClienteSeleccionado(cliente)}
+              />
+              <View style={styles.clienteInfo}>
+                <Text style={styles.clienteNombre}>{cliente.nombre}</Text>
+                <Text style={styles.clienteDireccion}>{cliente.direccion || 'Sin dirección'}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      <Divider style={styles.divider} />
       
       <TextInput
         label="Notas adicionales"
@@ -272,6 +360,48 @@ const styles = StyleSheet.create({
   },
   estadoChip: {
     margin: 4,
+  },
+  vendedorContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  vendedorChip: {
+    margin: 4,
+  },
+  divider: {
+    marginVertical: 16,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+  },
+  clientesContainer: {
+    marginBottom: 16,
+  },
+  clienteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    elevation: 1,
+  },
+  clienteInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  clienteNombre: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  clienteDireccion: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   dateButton: {
     marginBottom: 16,

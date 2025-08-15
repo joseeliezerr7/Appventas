@@ -113,7 +113,7 @@ router.post('/', async (req, res) => {
             VALUES (?, ?, ?, ?)
           `, [
             rutaId,
-            cliente.cliente_id,
+            cliente.id || cliente.cliente_id, // Aceptar tanto 'id' como 'cliente_id'
             cliente.orden || i + 1,
             cliente.notas || null
           ]);
