@@ -82,10 +82,15 @@ const NuevaDevolucionScreen = () => {
       setItemsSeleccionados(nuevosItems);
     } else {
       // Si no está seleccionado, lo añadimos con la cantidad máxima
-      setItemsSeleccionados([...itemsSeleccionados, {
+      const itemParaSeleccionar = {
         ...item,
         cantidadDevolucion: item.cantidad
-      }]);
+      };
+      console.log('=== SELECCIONANDO ITEM ===');
+      console.log('Item original:', JSON.stringify(item, null, 2));
+      console.log('Item para seleccionar:', JSON.stringify(itemParaSeleccionar, null, 2));
+      
+      setItemsSeleccionados([...itemsSeleccionados, itemParaSeleccionar]);
     }
   };
 
@@ -320,6 +325,9 @@ const NuevaDevolucionScreen = () => {
       const totalDevolucion = calcularTotalDevolucion();
       
       // Preparar los datos de la devolución para la API
+      console.log('=== ITEMS SELECCIONADOS ANTES DE ENVIAR AL BACKEND ===');
+      console.log('itemsSeleccionados:', JSON.stringify(itemsSeleccionados, null, 2));
+      
       const devolucionData = {
         venta_id: parseInt(venta?.id || 0), // Asegurarnos que sea un número
         usuario_id: parseInt(usuario_id), // Añadir el ID del usuario
@@ -329,14 +337,17 @@ const NuevaDevolucionScreen = () => {
           producto_id: parseInt(item.producto_id || (item.producto && item.producto.id) || 0),
           cantidad: parseFloat(item.cantidadDevolucion || 0),
           precio_unitario: parseFloat(item.precio_unitario || 0),
-          // Añadir información adicional del producto para actualizar el stock
+          unidad_id: item.unidad_id || null,
+          factor_conversion: item.factor_conversion || 1,
+          // Añadir información adicional del producto
           producto_nombre: item.producto_nombre || item.producto?.nombre || 'Producto sin nombre',
           producto_codigo: item.producto_codigo || item.producto?.codigo || `PROD-${item.producto_id || (item.producto && item.producto.id) || Date.now()}`,
-          // Usar la unidad original de la venta, o 1 como fallback
-          unidad_id: item.unidad_id || 1,
           unidad_nombre: item.unidad_nombre || 'Unidad'
         }))
       };
+      
+      console.log('=== DATOS FINALES A ENVIAR AL BACKEND ===');
+      console.log('devolucionData:', JSON.stringify(devolucionData, null, 2));
       
       // Verificar que los campos requeridos estén presentes
       if (!devolucionData.venta_id || devolucionData.venta_id <= 0) {
@@ -391,7 +402,7 @@ const NuevaDevolucionScreen = () => {
           [
             { 
               text: 'Ver Devoluciones', 
-              onPress: () => navigation.navigate('DevolucionesList') 
+              onPress: () => navigation.navigate('Devoluciones', { screen: 'DevolucionesList' }) 
             },
             { 
               text: 'OK', 

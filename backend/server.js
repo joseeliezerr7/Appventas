@@ -14,6 +14,7 @@ const unidadesRoutes = require('./routes/unidades');
 const categoriasRoutes = require('./routes/categorias');
 const usuariosRoutes = require('./routes/usuarios');
 const authRoutes = require('./routes/auth');
+const reportesRoutes = require('./routes/reportes');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -216,6 +217,7 @@ app.use('/api/unidades', unidadesRoutes);
 app.use('/api/categorias', categoriasRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/reportes', reportesRoutes);
 
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);

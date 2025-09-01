@@ -47,6 +47,26 @@ const fetchWithToken = async (url, options = {}) => {
       data = { message: text };
     }
     
+    // Manejar token inválido o expirado
+    if (response.status === 401 || response.status === 403) {
+      const errorMessage = data.message || `Error ${response.status}: ${response.statusText}`;
+      
+      // Si el error es relacionado con token inválido, limpiar la sesión
+      if (errorMessage.includes('Token inválido') || errorMessage.includes('Token no proporcionado')) {
+        console.log('Token inválido detectado, limpiando sesión...');
+        await AsyncStorage.removeItem('userToken');
+        await AsyncStorage.removeItem('user');
+        
+        // Crear un error especial para que el frontend pueda redirigir al login
+        const authError = new Error(errorMessage);
+        authError.isAuthError = true;
+        throw authError;
+      }
+      
+      console.error(`Error API (${response.status}):`, errorMessage);
+      throw new Error(errorMessage);
+    }
+    
     if (!response.ok) {
       const errorMessage = data.message || `Error ${response.status}: ${response.statusText}`;
       console.error(`Error API (${response.status}):`, errorMessage);
@@ -56,6 +76,12 @@ const fetchWithToken = async (url, options = {}) => {
     return data;
   } catch (error) {
     console.error('API Error:', error);
+    
+    // Si es un error de autenticación, no modificar el mensaje
+    if (error.isAuthError) {
+      throw error;
+    }
+    
     // Mejorar los mensajes de error para problemas comunes
     if (error.message === 'Network request failed') {
       throw new Error('No se pudo conectar al servidor. Verifica tu conexión a internet y que el servidor esté en funcionamiento.');
@@ -66,6 +92,11 @@ const fetchWithToken = async (url, options = {}) => {
 };
 
 const api = {
+  // Método genérico GET
+  get: async (endpoint) => {
+    return await fetchWithToken(endpoint);
+  },
+
   // Autenticación
   login: async (email, password) => {
     console.log(`Intentando iniciar sesión con: ${email}`);
@@ -365,48 +396,48 @@ const api = {
       throw new Error('Error al crear la devolución: No se recibió ID de devolución');
     }
     
-    // 2. Actualizar la venta (reducir el total y actualizar cantidades)
-    try {
-      await fetchWithToken(`/ventas/${devolucionData.venta_id}/actualizar-por-devolucion`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          items_devueltos: devolucionData.items,
-          devolucion_id: devolucionResponse.id
-        }),
-      });
-    } catch (error) {
-      console.error('Error al actualizar la venta:', error);
-      // No lanzamos error para no interrumpir el flujo, pero lo registramos
-    }
+    // 2. DESACTIVADO: El sistema automático de devoluciones ya maneja todo
+    // try {
+    //   await fetchWithToken(`/ventas/${devolucionData.venta_id}/actualizar-por-devolucion`, {
+    //     method: 'PUT',
+    //     body: JSON.stringify({
+    //       items_devueltos: devolucionData.items,
+    //       devolucion_id: devolucionResponse.id
+    //     }),
+    //   });
+    // } catch (error) {
+    //   console.error('Error al actualizar la venta:', error);
+    //   // No lanzamos error para no interrumpir el flujo, pero lo registramos
+    // }
     
-    // 3. Actualizar el stock de los productos
-    try {
-      // Asegurarnos de que cada item tenga la información necesaria del producto y unidad
-      const itemsConInfo = devolucionData.items.map(item => ({
-        ...item,
-        // Asegurarnos de que estos campos estén presentes
-        producto_nombre: item.producto_nombre || 'Producto sin nombre',
-        producto_codigo: item.producto_codigo || `PROD-${item.producto_id}`,
-        producto_id: parseInt(item.producto_id),
-        // Información de la unidad - siempre usar la unidad base (ID 1) para evitar problemas
-        unidad_id: 1, // Usar siempre 1 como la unidad base para evitar problemas con unidades no existentes
-        unidad_nombre: 'Unidad'
-      }));
-      
-      console.log('Enviando items para actualizar stock:', JSON.stringify(itemsConInfo, null, 2));
-      
-      await fetchWithToken('/productos/devolucion/actualizar-stock', {
-        method: 'PUT',
-        body: JSON.stringify({
-          items: itemsConInfo,
-          devolucion_id: devolucionResponse.id,
-          venta_id: devolucionData.venta_id // Añadimos el ID de la venta para poder obtener las unidades correctas
-        }),
-      });
-    } catch (error) {
-      console.error('Error al actualizar el stock:', error);
-      // No lanzamos error para no interrumpir el flujo, pero lo registramos
-    }
+    // 3. DESACTIVADO: El sistema automático de devoluciones ya maneja el stock
+    // try {
+    //   // Asegurarnos de que cada item tenga la información necesaria del producto y unidad
+    //   const itemsConInfo = devolucionData.items.map(item => ({
+    //     ...item,
+    //     // Asegurarnos de que estos campos estén presentes
+    //     producto_nombre: item.producto_nombre || 'Producto sin nombre',
+    //     producto_codigo: item.producto_codigo || `PROD-${item.producto_id}`,
+    //     producto_id: parseInt(item.producto_id),
+    //     // Información de la unidad - siempre usar la unidad base (ID 1) para evitar problemas
+    //     unidad_id: 1, // Usar siempre 1 como la unidad base para evitar problemas con unidades no existentes
+    //     unidad_nombre: 'Unidad'
+    //   }));
+    //   
+    //   console.log('Enviando items para actualizar stock:', JSON.stringify(itemsConInfo, null, 2));
+    //   
+    //   await fetchWithToken('/productos/devolucion/actualizar-stock', {
+    //     method: 'PUT',
+    //     body: JSON.stringify({
+    //       items: itemsConInfo,
+    //       devolucion_id: devolucionResponse.id,
+    //       venta_id: devolucionData.venta_id // Añadimos el ID de la venta para poder obtener las unidades correctas
+    //     }),
+    //   });
+    // } catch (error) {
+    //   console.error('Error al actualizar el stock:', error);
+    //   // No lanzamos error para no interrumpir el flujo, pero lo registramos
+    // }
     
     return devolucionResponse;
   },

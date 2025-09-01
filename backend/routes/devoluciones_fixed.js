@@ -100,31 +100,6 @@ router.post('/', async (req, res) => {
         return res.status(404).json({ message: `Venta con ID ${venta_id} no encontrada` });
       }
       
-      // Verificar que no hay devoluciones duplicadas para los mismos productos
-      for (const item of items) {
-        const [devolucionesExistentes] = await connection.query(`
-          SELECT SUM(dd.cantidad) as total_devuelto
-          FROM devolucion_detalles dd
-          JOIN devoluciones d ON dd.devolucion_id = d.id
-          WHERE d.venta_id = ? AND dd.producto_id = ?
-        `, [venta_id, item.producto_id]);
-        
-        const [ventaOriginal] = await connection.query(`
-          SELECT cantidad FROM venta_detalles 
-          WHERE venta_id = ? AND producto_id = ?
-        `, [venta_id, item.producto_id]);
-        
-        const totalDevuelto = parseFloat(devolucionesExistentes[0]?.total_devuelto || 0);
-        const cantidadOriginal = parseFloat(ventaOriginal[0]?.cantidad || 0);
-        
-        if (totalDevuelto + item.cantidad > cantidadOriginal) {
-          await connection.release();
-          return res.status(400).json({ 
-            message: `No se puede devolver ${item.cantidad} unidades del producto ${item.producto_id}. Ya se han devuelto ${totalDevuelto} de ${cantidadOriginal} unidades.` 
-          });
-        }
-      }
-      
       // Insertar la devolución
       const [resultDevolucion] = await connection.query(`
         INSERT INTO devoluciones (venta_id, usuario_id, total, motivo, fecha, creado_en)
@@ -148,52 +123,34 @@ router.post('/', async (req, res) => {
         
         // PASO 1: Buscar la unidad de la venta original AUTOMÁTICAMENTE
         const [ventaOriginal] = await connection.query(`
-          SELECT vd.unidad_id, vd.unidad_nombre, vd.factor_conversion
+          SELECT vd.unidad_id, vd.unidad_nombre, vd.factor_conversion, um.nombre as unidad_medida_nombre
           FROM venta_detalles vd
+          LEFT JOIN unidades_medida um ON vd.unidad_id = um.id
           WHERE vd.venta_id = ? AND vd.producto_id = ?
           ORDER BY vd.id DESC
           LIMIT 1
         `, [venta_id, producto_id]);
         
-        let producto_unidad_id = null;
+        let unidad_id_correcta = null;
         let unidad_nombre_correcta = 'Unidad';
         let unidad_medida_id = null;
         
         if (ventaOriginal.length > 0) {
-          // El unidad_id en venta_detalles puede ser unidades_medida.id o producto_unidades.id
-          const venta_unidad_id = ventaOriginal[0].unidad_id;
-          unidad_nombre_correcta = ventaOriginal[0].unidad_nombre || 'Unidad';
+          unidad_id_correcta = ventaOriginal[0].unidad_id;
+          unidad_nombre_correcta = ventaOriginal[0].unidad_nombre || ventaOriginal[0].unidad_medida_nombre || 'Unidad';
           
-          // Primero intentar buscar como producto_unidades.id
-          let [unidadInfo] = await connection.query(`
-            SELECT pu.*, um.nombre as unidad_medida_nombre
+          // Obtener el unidad_medida_id
+          const [unidadInfo] = await connection.query(`
+            SELECT pu.unidad_id
             FROM producto_unidades pu
-            JOIN unidades_medida um ON pu.unidad_id = um.id
-            WHERE pu.id = ? AND pu.producto_id = ?
-          `, [venta_unidad_id, producto_id]);
+            WHERE pu.id = ?
+          `, [unidad_id_correcta]);
           
           if (unidadInfo.length > 0) {
-            // Es un producto_unidades.id válido
-            producto_unidad_id = unidadInfo[0].id;
             unidad_medida_id = unidadInfo[0].unidad_id;
-            unidad_nombre_correcta = unidadInfo[0].unidad_medida_nombre || unidad_nombre_correcta;
-          } else {
-            // Intentar buscar como unidades_medida.id
-            [unidadInfo] = await connection.query(`
-              SELECT pu.*, um.nombre as unidad_medida_nombre
-              FROM producto_unidades pu
-              JOIN unidades_medida um ON pu.unidad_id = um.id
-              WHERE um.id = ? AND pu.producto_id = ?
-            `, [venta_unidad_id, producto_id]);
-            
-            if (unidadInfo.length > 0) {
-              producto_unidad_id = unidadInfo[0].id;
-              unidad_medida_id = unidadInfo[0].unidad_id;
-              unidad_nombre_correcta = unidadInfo[0].unidad_medida_nombre || unidad_nombre_correcta;
-            }
           }
           
-          console.log(`🎯 UNIDAD ENCONTRADA: ${unidad_nombre_correcta} (ProductoUnidad ID: ${producto_unidad_id}, UnidadMedida ID: ${unidad_medida_id})`);
+          console.log(`🎯 UNIDAD ENCONTRADA AUTOMÁTICAMENTE: ${unidad_nombre_correcta} (ID: ${unidad_id_correcta})`);
         } else {
           console.log('⚠️  No se encontró la venta original, usando unidad por defecto');
         }
@@ -207,101 +164,32 @@ router.post('/', async (req, res) => {
         console.log(`📝 Detalle guardado con unidad: ${unidad_nombre_correcta}`);
         
         // PASO 3: Restaurar stock AUTOMÁTICAMENTE en la unidad correcta
-        if (producto_unidad_id) {
-          console.log(`🔍 Buscando unidad con ID: ${producto_unidad_id}`);
-          
+        if (unidad_id_correcta) {
           const [unidadStock] = await connection.query(`
-            SELECT pu.*, um.nombre as unidad_medida_nombre
-            FROM producto_unidades pu
-            JOIN unidades_medida um ON pu.unidad_id = um.id
-            WHERE pu.id = ?
-          `, [producto_unidad_id]);
+            SELECT * FROM producto_unidades WHERE id = ?
+          `, [unidad_id_correcta]);
           
           if (unidadStock.length > 0) {
-            const stockActual = parseFloat(unidadStock[0].stock || 0);
+            const stockActual = unidadStock[0].stock;
             const nuevoStock = stockActual + cantidad;
-            
-            console.log(`📊 ANTES - Unidad: ${unidadStock[0].unidad_medida_nombre}, Stock: ${stockActual}, ID: ${producto_unidad_id}`);
             
             await connection.query(`
               UPDATE producto_unidades 
               SET stock = ? 
               WHERE id = ?
-            `, [nuevoStock, producto_unidad_id]);
-            
-            // Verificar que la actualización se aplicó
-            const [verificacion] = await connection.query(`
-              SELECT pu.*, um.nombre as unidad_medida_nombre
-              FROM producto_unidades pu
-              JOIN unidades_medida um ON pu.unidad_id = um.id
-              WHERE pu.id = ?
-            `, [producto_unidad_id]);
-            
-            if (verificacion.length > 0) {
-              console.log(`📊 DESPUÉS - Unidad: ${verificacion[0].unidad_medida_nombre}, Stock: ${verificacion[0].stock}, ID: ${producto_unidad_id}`);
-            }
+            `, [nuevoStock, unidad_id_correcta]);
             
             console.log(`🔄 STOCK RESTAURADO AUTOMÁTICAMENTE: ${unidad_nombre_correcta} de ${stockActual} a ${nuevoStock}`);
-          } else {
-            console.log('⚠️  No se encontró la unidad del producto para restaurar stock');
           }
         } else {
-          console.log('⚠️  No se pudo restaurar el stock - unidad no encontrada en venta original');
+          console.log('⚠️  No se pudo restaurar el stock - unidad no encontrada');
         }
         
-        // PASO 4: Verificar todas las unidades del producto ANTES del recálculo
-        const [todasLasUnidades] = await connection.query(`
-          SELECT pu.*, um.nombre as unidad_nombre
-          FROM producto_unidades pu
-          LEFT JOIN unidades_medida um ON pu.unidad_id = um.id
-          WHERE pu.producto_id = ?
-        `, [producto_id]);
-        
-        console.log(`🔍 VERIFICACIÓN - Todas las unidades del producto ${producto_id}:`);
-        todasLasUnidades.forEach(unidad => {
-          console.log(`  - ID: ${unidad.id}, Unidad: ${unidad.unidad_nombre}, Stock: ${unidad.stock}, Factor: ${unidad.factor_conversion}`);
-        });
-        
-        // PASO 5: Recalcular stock total
+        // PASO 4: Recalcular stock total
         if (typeof req.app.locals.recalcularStockTotal === 'function') {
           await req.app.locals.recalcularStockTotal(connection, producto_id);
           console.log(`📊 Stock total recalculado para producto ${producto_id}`);
         }
-      }
-      
-      // PASO 5: Actualizar estado de la venta si es una devolución completa
-      const [totalVenta] = await connection.query(`
-        SELECT SUM(vd.cantidad * vd.precio_unitario) as total_venta
-        FROM venta_detalles vd 
-        WHERE vd.venta_id = ?
-      `, [venta_id]);
-      
-      const [totalDevoluciones] = await connection.query(`
-        SELECT SUM(d.total) as total_devuelto
-        FROM devoluciones d 
-        WHERE d.venta_id = ?
-      `, [venta_id]);
-      
-      const totalVentaAmount = parseFloat(totalVenta[0]?.total_venta || 0);
-      const totalDevueltoAmount = parseFloat(totalDevoluciones[0]?.total_devuelto || 0);
-      
-      let nuevoEstado = 'completada';
-      if (totalDevueltoAmount >= totalVentaAmount) {
-        nuevoEstado = 'cancelada'; // Usar 'cancelada' para devolución completa
-      }
-      // No cambiar estado para devoluciones parciales ya que no hay opción en el ENUM
-      
-      // Solo actualizar el estado si es devolución completa
-      if (nuevoEstado !== 'completada') {
-        await connection.query(`
-          UPDATE ventas 
-          SET estado = ?
-          WHERE id = ?
-        `, [nuevoEstado, venta_id]);
-        
-        console.log(`📊 Estado de venta ${venta_id} actualizado a: ${nuevoEstado}`);
-      } else {
-        console.log(`📊 Venta ${venta_id} mantiene estado 'completada' (devolución parcial o ninguna)`);
       }
       
       // Confirmar transacción

@@ -17,7 +17,7 @@ import NuevaVentaScreen from '../screens/ventas/NuevaVentaScreen';
 import DetalleVentaScreen from '../screens/ventas/DetalleVentaScreen';
 import DevolucionesScreen from '../screens/devoluciones/Devoluciones';
 import NuevaDevolucionScreen from '../screens/devoluciones/NuevaDevolucionScreen';
-import DetalleDevolucionScreen from '../screens/devoluciones/DetalleDevolucion';
+import DetalleDevolucionScreen from '../screens/devoluciones/DetalleDevolucionScreenNew2';
 import InventarioScreen from '../screens/inventario/InventarioScreen';
 import ProductoDetalleScreen from '../screens/inventario/ProductoDetalleScreen';
 import NuevoProductoScreen from '../screens/inventario/NuevoProductoScreen';
@@ -30,6 +30,9 @@ import ProveedoresScreen from '../screens/proveedores/ProveedoresScreen';
 import NuevoProveedorScreen from '../screens/proveedores/NuevoProveedorScreen';
 import ProveedorDetalleScreen from '../screens/proveedores/ProveedorDetalleScreen';
 import ReportesScreen from '../screens/reportes/ReportesScreen';
+import ReporteVentasProductoScreen from '../screens/reportes/ReporteVentasProductoScreen';
+import ReporteVentasClienteScreen from '../screens/reportes/ReporteVentasClienteScreen';
+import ReporteVentasVendedorScreen from '../screens/reportes/ReporteVentasVendedorScreen';
 import CierreScreen from '../screens/cierres/CierreScreen';
 import NuevoCierreScreen from '../screens/cierres/NuevoCierreScreen';
 
@@ -93,6 +96,9 @@ const DevolucionesNavigator = () => (
 const ReportesNavigator = () => (
   <Stack.Navigator>
     <Stack.Screen name="ReportesList" component={ReportesScreen} options={{ title: 'Reportes' }} />
+    <Stack.Screen name="ReporteVentasProducto" component={ReporteVentasProductoScreen} options={{ title: 'Ventas por Producto' }} />
+    <Stack.Screen name="ReporteVentasCliente" component={ReporteVentasClienteScreen} options={{ title: 'Ventas por Cliente' }} />
+    <Stack.Screen name="ReporteVentasVendedor" component={ReporteVentasVendedorScreen} options={{ title: 'Ventas por Vendedor' }} />
     <Stack.Screen name="Proveedores" component={ProveedoresScreen} options={{ title: 'Proveedores' }} />
     <Stack.Screen name="NuevoProveedor" component={NuevoProveedorScreen} options={{ title: 'Nuevo Proveedor' }} />
     <Stack.Screen name="ProveedorDetalle" component={ProveedorDetalleScreen} options={{ title: 'Detalle del Proveedor' }} />

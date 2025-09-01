@@ -80,13 +80,44 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
       setUser(null);
+      setError(null);
+      console.log('Sesión cerrada correctamente');
     } catch (e) {
       console.log('Error al cerrar sesión:', e);
     }
   };
 
+  const checkTokenValidity = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.log('No hay token almacenado');
+        return false;
+      }
+
+      // Verificar si el token está cerca de expirar
+      // Decodificar el payload del JWT (Base64)
+      const base64Payload = token.split('.')[1];
+      const decodedPayload = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
+      const tokenPayload = JSON.parse(decodeURIComponent(escape(atob(decodedPayload))));
+      const currentTime = Date.now() / 1000;
+      
+      if (tokenPayload.exp <= currentTime) {
+        console.log('Token expirado, cerrando sesión automáticamente');
+        await logout();
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      console.log('Error al verificar token:', e);
+      await logout();
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, checkTokenValidity }}>
       {children}
     </AuthContext.Provider>
   );

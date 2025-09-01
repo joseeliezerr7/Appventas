@@ -5,6 +5,7 @@ import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, IconButton, Text } from 'react-native-paper';
+import api from '../../services/api';
 
 const DetalleDevolucionScreen = () => {
   const navigation = useNavigation();
@@ -17,58 +18,49 @@ const DetalleDevolucionScreen = () => {
   const loadDevolucionDetalle = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // En una implementación real, esto sería una llamada a la API
-      // Por ahora intentamos cargar desde localStorage o usamos datos de ejemplo
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      let devolucionData = null;
       const { devolucionId } = route.params;
       
-      try {
-        // Intentar cargar desde localStorage
-        const storedDevoluciones = localStorage.getItem('devoluciones');
-        if (storedDevoluciones) {
-          const devoluciones = JSON.parse(storedDevoluciones);
-          devolucionData = devoluciones.find(d => d.id === devolucionId);
-        }
-      } catch (storageError) {
-        console.error('Error al cargar devolución del almacenamiento:', storageError);
+      if (!devolucionId) {
+        throw new Error('ID de devolución no proporcionado');
       }
+
+      // Llamar a la API para obtener los detalles de la devolución
+      const devolucionData = await api.getDevolucion(devolucionId);
       
-      // Si no encontramos la devolución, usamos datos de ejemplo
-      if (!devolucionData) {
-        devolucionData = {
-          id: devolucionId || 'DEV-1686523200000',
-          venta_id: 5,
-          fecha: '11/06/2025',
-          hora: '14:30:25',
-          cliente: { id: 1, nombre: 'Juan Pérez' },
-          motivo: 'Producto defectuoso',
-          total: 250.00,
-          items: [
-            { 
-              producto: { id: 1, nombre: 'Refresco Cola 600ml' }, 
-              cantidadDevolucion: 2, 
-              precio_unitario: 25.00,
-              subtotal: 50.00
-            },
-            { 
-              producto: { id: 3, nombre: 'Snack Papas 150g' }, 
-              cantidadDevolucion: 3, 
-              precio_unitario: 18.25,
-              subtotal: 54.75
-            },
-          ],
-          estado: 'completada',
-          usuario: { id: 1, nombre: 'Admin' }
-        };
-      }
+      console.log('=== DATOS RECIBIDOS DE LA API ===');
+      console.log('devolucionData completa:', JSON.stringify(devolucionData, null, 2));
+      console.log('devolucionData.items:', JSON.stringify(devolucionData.items, null, 2));
       
-      setDevolucion(devolucionData);
+      // Transformar los datos para que coincidan con el formato esperado por el componente
+      const devolucionFormateada = {
+        id: devolucionData.id,
+        venta_id: devolucionData.venta_id,
+        fecha: new Date(devolucionData.fecha).toLocaleDateString('es-HN'),
+        hora: new Date(devolucionData.creado_en).toLocaleTimeString('es-HN'),
+        cliente: { nombre: devolucionData.cliente_nombre || 'Cliente no especificado' },
+        motivo: devolucionData.motivo || 'No especificado',
+        total: parseFloat(devolucionData.total || 0),
+        items: (devolucionData.items || []).map(item => ({
+          producto: { 
+            id: item.producto_id, 
+            nombre: item.producto_nombre || 'Producto sin nombre' 
+          },
+          cantidadDevolucion: parseFloat(item.cantidad || 0),
+          precio_unitario: parseFloat(item.precio_unitario || 0),
+          subtotal: parseFloat(item.subtotal || 0),
+          unidad_nombre: item.unidad_nombre || 'Unidad'
+        })),
+        estado: 'completada',
+        usuario: { nombre: devolucionData.usuario_nombre || 'Usuario no especificado' }
+      };
+      
+      console.log('=== DATOS DESPUÉS DE FORMATEAR ===');
+      console.log('devolucionFormateada.items:', JSON.stringify(devolucionFormateada.items, null, 2));
+      
+      setDevolucion(devolucionFormateada);
     } catch (error) {
       console.error('Error al cargar detalles de devolución:', error);
-      Alert.alert('Error', 'No se pudieron cargar los detalles de la devolución');
+      Alert.alert('Error', error.message || 'No se pudieron cargar los detalles de la devolución');
     } finally {
       setLoading(false);
     }
@@ -89,7 +81,7 @@ const DetalleDevolucionScreen = () => {
     const productosHTML = (devolucion.items || []).map(item => `
       <tr>
         <td>${item.producto?.nombre || 'Producto sin nombre'}</td>
-        <td>${item.cantidadDevolucion}</td>
+        <td>${item.cantidadDevolucion} ${item.unidad_nombre || ''}</td>
         <td>L. ${parseFloat(item.precio_unitario).toFixed(2)}</td>
         <td>L. ${(parseFloat(item.precio_unitario) * parseFloat(item.cantidadDevolucion)).toFixed(2)}</td>
       </tr>
@@ -303,9 +295,16 @@ const DetalleDevolucionScreen = () => {
           
           <Divider style={styles.divider} />
           
-          <Text style={styles.sectionTitle}>Productos Devueltos</Text>
+          <Text style={styles.sectionTitle}>Productos Devueltos (TEST)</Text>
           
-          {(devolucion.items || []).map((item, index) => (
+          {(devolucion.items || []).map((item, index) => {
+            console.log(`🔍 RENDERIZANDO ITEM ${index}:`, {
+              producto_nombre: item.producto?.nombre,
+              cantidadDevolucion: item.cantidadDevolucion,
+              unidad_nombre: item.unidad_nombre
+            });
+            
+            return (
             <Card key={index} style={styles.itemCard}>
               <Card.Content>
                 <Text style={styles.productoNombre}>
@@ -314,7 +313,9 @@ const DetalleDevolucionScreen = () => {
                 <View style={styles.itemDetails}>
                   <View style={styles.itemDetail}>
                     <Text style={styles.itemDetailLabel}>Cantidad:</Text>
-                    <Text style={styles.itemDetailValue}>{item.cantidadDevolucion}</Text>
+                    <Text style={styles.itemDetailValue}>
+                      {item.cantidadDevolucion} {item.unidad_nombre || 'SIN_UNIDAD'}
+                    </Text>
                   </View>
                   <View style={styles.itemDetail}>
                     <Text style={styles.itemDetailLabel}>Precio:</Text>
@@ -331,7 +332,8 @@ const DetalleDevolucionScreen = () => {
                 </View>
               </Card.Content>
             </Card>
-          ))}
+            );
+          })}
           
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>Total Devuelto:</Text>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { Text, Button, Card, TextInput, List, Divider, ActivityIndicator, IconButton, Modal, Portal, RadioButton } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
@@ -43,6 +43,7 @@ const NuevaVentaScreen = () => {
         
         // Cargar clientes
         const clientesData = await api.getClientes();
+        console.log('Clientes cargados:', JSON.stringify(clientesData.slice(0, 2), null, 2));
         setClientes(clientesData);
         
         // Cargar productos
@@ -50,8 +51,8 @@ const NuevaVentaScreen = () => {
         console.log('Estructura de productos:', JSON.stringify(productosData[0]));
         setProductos(productosData);
         
-        console.log(`Clientes cargados: ${clientesData.length}`);
-        console.log(`Productos cargados: ${productosData.length}`);
+        console.log(`Total clientes cargados: ${clientesData.length}`);
+        console.log(`Total productos cargados: ${productosData.length}`);
       } catch (error) {
         console.error('Error al cargar datos:', error);
         Alert.alert('Error', 'No se pudieron cargar los datos necesarios');
@@ -80,9 +81,31 @@ const NuevaVentaScreen = () => {
       );
 
   const handleSelectCliente = (cliente) => {
-    setVenta({ ...venta, cliente });
+    console.log('=== INICIO SELECCIÓN CLIENTE ===');
+    console.log('Cliente a seleccionar:', JSON.stringify(cliente, null, 2));
+    console.log('Estado de venta ANTES:', JSON.stringify(venta, null, 2));
+    
+    // Crear nueva venta con cliente
+    const nuevaVenta = {
+      ...venta,
+      cliente: cliente
+    };
+    
+    console.log('Estado de venta DESPUÉS:', JSON.stringify(nuevaVenta, null, 2));
+    
+    // Actualizar estado
+    setVenta(nuevaVenta);
+    
+    // Cerrar lista inmediatamente
     setShowClientesList(false);
     setClienteSearch('');
+    
+    console.log('=== FIN SELECCIÓN CLIENTE ===');
+    
+    // Verificar que el estado se actualizó después de un momento
+    setTimeout(() => {
+      console.log('Estado final verificado:', JSON.stringify(venta, null, 2));
+    }, 100);
   };
 
   const handleClienteSearchFocus = () => {
@@ -90,10 +113,10 @@ const NuevaVentaScreen = () => {
   };
 
   const handleClienteSearchBlur = () => {
-    // Delay para permitir que el onPress del item funcione antes de cerrar
+    // Usar un timeout más largo para permitir la selección
     setTimeout(() => {
       setShowClientesList(false);
-    }, 150);
+    }, 500);
   };
 
   const cargarUnidadesProducto = async (producto) => {
@@ -272,6 +295,9 @@ const NuevaVentaScreen = () => {
   const handleSelectUnidad = (unidad) => {
     if (!unidad) return;
     
+    // console.log('=== SELECCIONANDO UNIDAD ===');
+    // console.log('Unidad seleccionada:', JSON.stringify(unidad, null, 2));
+    
     setSelectedUnidad(unidad);
     setShowUnidadesModal(false);
     
@@ -285,6 +311,9 @@ const NuevaVentaScreen = () => {
         unidad: unidad,
         factor_conversion: unidad.factor_conversion || 1
       };
+      
+      // console.log('=== ITEM CREADO ===');
+      // console.log('Nuevo item:', JSON.stringify(newItem, null, 2));
       
       const updatedItems = [...venta.items, newItem];
       updateVentaWithItems(updatedItems);
@@ -452,6 +481,8 @@ const NuevaVentaScreen = () => {
         notas: venta.notas
       };
       
+      console.log('Datos de venta a enviar:', JSON.stringify(ventaData, null, 2));
+      
       // Enviar los datos al backend
       const response = await api.createVenta(ventaData);
       
@@ -555,15 +586,21 @@ const NuevaVentaScreen = () => {
         <Card.Title title="Datos del Cliente" />
         <Card.Content>
           {venta.cliente ? (
-            <View style={styles.clienteSeleccionado}>
+            <View style={[styles.clienteSeleccionado, { backgroundColor: '#e8f5e8', padding: 16, borderRadius: 8, borderWidth: 2, borderColor: '#28a745' }]}>
               <View style={styles.clienteInfo}>
-                <Text style={styles.clienteNombre}>{venta.cliente?.nombre || 'Cliente sin nombre'}</Text>
+                <Text style={[styles.clienteNombre, { color: '#28a745', fontWeight: 'bold' }]}>
+                  ✓ Cliente Seleccionado: {venta.cliente?.nombre || 'Cliente sin nombre'}
+                </Text>
                 <Text style={styles.clienteTelefono}>{venta.cliente?.telefono || 'Sin teléfono'}</Text>
+                <Text style={{ fontSize: 12, color: '#666' }}>ID: {venta.cliente?.id}</Text>
               </View>
               <IconButton
                 icon="close"
                 size={20}
-                onPress={() => setVenta({ ...venta, cliente: null })}
+                onPress={() => {
+                  console.log('Deseleccionando cliente...');
+                  setVenta({ ...venta, cliente: null });
+                }}
               />
             </View>
           ) : (
@@ -571,10 +608,24 @@ const NuevaVentaScreen = () => {
               <TextInput
                 label="Buscar cliente por nombre, teléfono, email o dirección"
                 value={clienteSearch}
-                onChangeText={setClienteSearch}
+                onChangeText={(text) => {
+                  setClienteSearch(text);
+                  setShowClientesList(text.length > 0 || clientes.length > 0);
+                }}
                 onFocus={handleClienteSearchFocus}
-                onBlur={handleClienteSearchBlur}
-                right={<TextInput.Icon icon="magnify" />}
+                right={
+                  <TextInput.Icon 
+                    icon={showClientesList ? "close" : "magnify"}
+                    onPress={() => {
+                      if (showClientesList) {
+                        setShowClientesList(false);
+                        setClienteSearch('');
+                      } else {
+                        setShowClientesList(true);
+                      }
+                    }}
+                  />
+                }
                 style={styles.searchInput}
                 placeholder="Escribe para buscar..."
               />
@@ -584,18 +635,33 @@ const NuevaVentaScreen = () => {
                   <ScrollView style={styles.clientesList} nestedScrollEnabled>
                     {filteredClientes.length > 0 ? (
                       <>
-                        {clienteSearch === '' && (
-                          <View style={styles.dropdownHeader}>
-                            <Text style={styles.dropdownHeaderText}>
-                              Selecciona un cliente (mostrando {filteredClientes.length} de {clientes.length})
-                            </Text>
-                          </View>
-                        )}
+                        <View style={styles.dropdownHeader}>
+                          <Text style={styles.dropdownHeaderText}>
+                            {clienteSearch === '' 
+                              ? `Selecciona un cliente (mostrando ${filteredClientes.length} de ${clientes.length})`
+                              : `Resultados para "${clienteSearch}" (${filteredClientes.length})`
+                            }
+                          </Text>
+                          <TouchableOpacity 
+                            onPress={() => {
+                              setShowClientesList(false);
+                              setClienteSearch('');
+                            }}
+                            style={styles.closeDropdownButton}
+                          >
+                            <Text style={styles.closeDropdownText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
                         {filteredClientes.map(cliente => (
                           <TouchableOpacity
                             key={cliente.id}
-                            onPress={() => handleSelectCliente(cliente)}
-                            style={styles.clienteItem}
+                            onPress={() => {
+                              console.log('TOUCH DETECTED para cliente:', cliente.nombre);
+                              console.log('Llamando handleSelectCliente...');
+                              handleSelectCliente(cliente);
+                            }}
+                            style={[styles.clienteItem, { backgroundColor: '#f8f9fa' }]}
+                            activeOpacity={0.5}
                           >
                             <View style={styles.clienteInfo}>
                               <Text style={styles.clienteNombre}>{cliente.nombre}</Text>

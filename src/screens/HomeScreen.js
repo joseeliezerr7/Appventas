@@ -38,7 +38,7 @@ const formatearFecha = (fecha) => {
 
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const { user, logout } = useAuth();
+  const { user, logout, checkTokenValidity } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState({
@@ -151,6 +151,14 @@ const HomeScreen = () => {
       console.log('Dashboard data cargada correctamente');
     } catch (error) {
       console.error('Error al cargar datos del dashboard:', error);
+      
+      // Si es un error de autenticación, cerrar sesión automáticamente
+      if (error.isAuthError) {
+        console.log('Error de autenticación detectado, cerrando sesión...');
+        logout();
+        return;
+      }
+      
       // Si hay error, usar datos de respaldo
       setDashboardData({
         ventasHoy: 0,
@@ -165,12 +173,25 @@ const HomeScreen = () => {
   };
 
   useEffect(() => {
-    loadDashboardData();
+    // Verificar la validez del token antes de cargar datos
+    const initializeScreen = async () => {
+      const isTokenValid = await checkTokenValidity();
+      if (isTokenValid) {
+        loadDashboardData();
+      }
+    };
+    
+    initializeScreen();
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    loadDashboardData();
+    const isTokenValid = await checkTokenValidity();
+    if (isTokenValid) {
+      loadDashboardData();
+    } else {
+      setRefreshing(false);
+    }
   };
 
   const navigateTo = (screen, params = {}) => {

@@ -1,16 +1,69 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, Button, Divider, ActivityIndicator, Menu } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatCurrency } from '../../utils/formatters';
+import api from '../../services/api';
+import { exportService } from '../../services/exportService';
 
 const ReportesScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
+  const [loadingResumen, setLoadingResumen] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedPeriodo, setSelectedPeriodo] = useState('Este mes');
 
   const periodos = ['Hoy', 'Esta semana', 'Este mes', 'Último trimestre', 'Este año'];
+
+  useEffect(() => {
+    cargarResumenDashboard();
+  }, [selectedPeriodo]);
+
+  const cargarResumenDashboard = async () => {
+    try {
+      setLoadingResumen(true);
+      const periodo = selectedPeriodo.toLowerCase().replace(' ', '_');
+      console.log('Cargando resumen para período:', periodo);
+      
+      const response = await api.get(`/reportes/resumen-dashboard?periodo=${periodo}`);
+      console.log('Respuesta del servidor:', response);
+      
+      if (response && response.data) {
+        console.log('Datos del resumen:', response.data);
+        setResumenVentas(response.data);
+      } else {
+        console.warn('Respuesta vacía o sin datos');
+        // Usar datos por defecto si no hay respuesta
+        setResumenVentas({
+          totalVentas: 0,
+          totalProductos: 0,
+          clientesAtendidos: 0,
+          ticketPromedio: 0,
+          comparacionAnterior: 0
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar resumen:', error);
+      console.error('Detalles del error:', error.message);
+      
+      // Usar datos por defecto en caso de error
+      setResumenVentas({
+        totalVentas: 0,
+        totalProductos: 0,
+        clientesAtendidos: 0,
+        ticketPromedio: 0,
+        comparacionAnterior: 0
+      });
+      
+      // Solo mostrar alerta si no es un error de endpoint no encontrado
+      if (!error.message.includes('404')) {
+        Alert.alert('Error', 'No se pudo cargar el resumen del dashboard');
+      }
+    } finally {
+      setLoadingResumen(false);
+    }
+  };
 
   const reportesDisponibles = [
     {
@@ -63,13 +116,13 @@ const ReportesScreen = () => {
     }
   ];
 
-  const resumenVentas = {
-    totalVentas: 45750.25,
-    totalProductos: 358,
-    clientesAtendidos: 42,
-    ticketPromedio: 1089.29,
-    comparacionAnterior: 12.5 // porcentaje de incremento respecto al periodo anterior
-  };
+  const [resumenVentas, setResumenVentas] = useState({
+    totalVentas: 0,
+    totalProductos: 0,
+    clientesAtendidos: 0,
+    ticketPromedio: 0,
+    comparacionAnterior: 0
+  });
 
   const handleGenerarReporte = (ruta) => {
     setLoading(true);
@@ -78,7 +131,53 @@ const ReportesScreen = () => {
     setTimeout(() => {
       setLoading(false);
       navigation.navigate(ruta, { periodo: selectedPeriodo });
-    }, 1000);
+    }, 500);
+  };
+
+  const exportarResumen = async (formato) => {
+    try {
+      if (loadingResumen) {
+        Alert.alert('Error', 'Espera a que se cargue el resumen');
+        return;
+      }
+
+      const resumenData = [
+        {
+          metrica: 'Total Ventas',
+          valor: resumenVentas?.totalVentas || 0,
+          periodo: selectedPeriodo
+        },
+        {
+          metrica: 'Productos Vendidos',
+          valor: resumenVentas?.totalProductos || 0,
+          periodo: selectedPeriodo
+        },
+        {
+          metrica: 'Clientes Atendidos',
+          valor: resumenVentas?.clientesAtendidos || 0,
+          periodo: selectedPeriodo
+        },
+        {
+          metrica: 'Ticket Promedio',
+          valor: resumenVentas?.ticketPromedio || 0,
+          periodo: selectedPeriodo
+        },
+        {
+          metrica: 'Comparación Anterior',
+          valor: `${resumenVentas?.comparacionAnterior || 0}%`,
+          periodo: selectedPeriodo
+        }
+      ];
+
+      const headers = ['Métrica', 'Valor', 'Período'];
+      const title = `Resumen de Ventas - ${selectedPeriodo}`;
+      const filename = 'resumen_ventas';
+
+      await exportService.exportData(formato, resumenData, filename, headers, title);
+    } catch (error) {
+      console.error('Error al exportar resumen:', error);
+      Alert.alert('Error', 'No se pudo exportar el resumen');
+    }
   };
 
   const renderResumenCard = () => (
@@ -113,27 +212,34 @@ const ReportesScreen = () => {
         )}
       />
       <Card.Content>
-        <View style={styles.resumenGrid}>
-          <View style={styles.resumenItem}>
-            <Text style={styles.resumenValue}>${resumenVentas.totalVentas.toFixed(2)}</Text>
-            <Text style={styles.resumenLabel}>Total Ventas</Text>
+        {loadingResumen ? (
+          <View style={styles.resumenLoading}>
+            <ActivityIndicator size="small" color="#0066cc" />
+            <Text style={styles.resumenLoadingText}>Cargando resumen...</Text>
           </View>
-          
-          <View style={styles.resumenItem}>
-            <Text style={styles.resumenValue}>{resumenVentas.totalProductos}</Text>
-            <Text style={styles.resumenLabel}>Productos Vendidos</Text>
+        ) : (
+          <View style={styles.resumenGrid}>
+            <View style={styles.resumenItem}>
+              <Text style={styles.resumenValue}>{formatCurrency(resumenVentas?.totalVentas || 0)}</Text>
+              <Text style={styles.resumenLabel}>Total Ventas</Text>
+            </View>
+            
+            <View style={styles.resumenItem}>
+              <Text style={styles.resumenValue}>{resumenVentas?.totalProductos || 0}</Text>
+              <Text style={styles.resumenLabel}>Productos Vendidos</Text>
+            </View>
+            
+            <View style={styles.resumenItem}>
+              <Text style={styles.resumenValue}>{resumenVentas?.clientesAtendidos || 0}</Text>
+              <Text style={styles.resumenLabel}>Clientes Atendidos</Text>
+            </View>
+            
+            <View style={styles.resumenItem}>
+              <Text style={styles.resumenValue}>{formatCurrency(resumenVentas?.ticketPromedio || 0)}</Text>
+              <Text style={styles.resumenLabel}>Ticket Promedio</Text>
+            </View>
           </View>
-          
-          <View style={styles.resumenItem}>
-            <Text style={styles.resumenValue}>{resumenVentas.clientesAtendidos}</Text>
-            <Text style={styles.resumenLabel}>Clientes Atendidos</Text>
-          </View>
-          
-          <View style={styles.resumenItem}>
-            <Text style={styles.resumenValue}>${resumenVentas.ticketPromedio.toFixed(2)}</Text>
-            <Text style={styles.resumenLabel}>Ticket Promedio</Text>
-          </View>
-        </View>
+        )}
         
         <View style={styles.comparacionContainer}>
           <Text style={styles.comparacionLabel}>
@@ -141,15 +247,15 @@ const ReportesScreen = () => {
           </Text>
           <View style={styles.comparacionValor}>
             <Ionicons 
-              name={resumenVentas.comparacionAnterior >= 0 ? "arrow-up" : "arrow-down"} 
+              name={(resumenVentas?.comparacionAnterior || 0) >= 0 ? "arrow-up" : "arrow-down"} 
               size={16} 
-              color={resumenVentas.comparacionAnterior >= 0 ? "#4CAF50" : "#F44336"} 
+              color={(resumenVentas?.comparacionAnterior || 0) >= 0 ? "#4CAF50" : "#F44336"} 
             />
             <Text style={[
               styles.comparacionPorcentaje,
-              {color: resumenVentas.comparacionAnterior >= 0 ? "#4CAF50" : "#F44336"}
+              {color: (resumenVentas?.comparacionAnterior || 0) >= 0 ? "#4CAF50" : "#F44336"}
             ]}>
-              {Math.abs(resumenVentas.comparacionAnterior)}%
+              {Math.abs(resumenVentas?.comparacionAnterior || 0)}%
             </Text>
           </View>
         </View>
@@ -212,25 +318,25 @@ const ReportesScreen = () => {
         <View style={styles.exportButtons}>
           <Button 
             mode="outlined" 
-            icon="file-excel-outline" 
+            icon="file-excel" 
             style={styles.exportButton}
-            onPress={() => {}}
+            onPress={() => exportarResumen('excel')}
           >
             Excel
           </Button>
           <Button 
             mode="outlined" 
-            icon="file-pdf-outline" 
+            icon="file-pdf-box" 
             style={styles.exportButton}
-            onPress={() => {}}
+            onPress={() => exportarResumen('pdf')}
           >
             PDF
           </Button>
           <Button 
             mode="outlined" 
-            icon="file-csv-outline" 
+            icon="file-delimited" 
             style={styles.exportButton}
-            onPress={() => {}}
+            onPress={() => exportarResumen('csv')}
           >
             CSV
           </Button>
@@ -300,6 +406,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  resumenLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  resumenLoadingText: {
+    marginLeft: 10,
+    color: '#666',
   },
   sectionTitle: {
     fontSize: 18,
