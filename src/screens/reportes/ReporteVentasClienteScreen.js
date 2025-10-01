@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency, formatDate, formatPhoneNumber } from '../../utils/formatters';
 import api from '../../services/api';
+import { exportService } from '../../services/exportService';
 
 const ReporteVentasClienteScreen = () => {
   const navigation = useNavigation();
@@ -130,6 +131,26 @@ const ReporteVentasClienteScreen = () => {
     }), { totalGastado: 0, totalCompras: 0 });
   };
 
+  const exportarDatos = async (formato) => {
+    try {
+      setMenuVisible(false);
+
+      if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) {
+        Alert.alert('Error', 'No hay datos para exportar');
+        return;
+      }
+
+      const headers = ['Cliente', 'Teléfono', 'Email', 'Dirección', 'Compras', 'Total Gastado', 'Ticket Prom.', 'Primera Compra', 'Última Compra'];
+      const title = `Reporte de Ventas por Cliente - ${periodo || 'Este mes'}`;
+      const filename = 'ventas_por_cliente';
+
+      await exportService.exportData(formato, filteredData, filename, headers, title);
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      Alert.alert('Error', 'No se pudo exportar el reporte');
+    }
+  };
+
   const totales = calcularTotales();
   totales.promedioTicket = totales.totalCompras > 0 ? totales.totalGastado / totales.totalCompras : 0;
 
@@ -163,9 +184,9 @@ const ReporteVentasClienteScreen = () => {
             </Button>
           }
         >
-          <Menu.Item title="Excel" onPress={() => {}} />
-          <Menu.Item title="PDF" onPress={() => {}} />
-          <Menu.Item title="CSV" onPress={() => {}} />
+          <Menu.Item title="Excel" onPress={() => exportarDatos('excel')} />
+          <Menu.Item title="PDF" onPress={() => exportarDatos('pdf')} />
+          <Menu.Item title="CSV" onPress={() => exportarDatos('csv')} />
         </Menu>
       </View>
 

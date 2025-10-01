@@ -138,55 +138,34 @@ router.get('/ventas-por-vendedor', async (req, res) => {
 router.get('/inventario', async (req, res) => {
   try {
     const { categoria_id, stock_minimo } = req.query;
-    
+
     let whereConditions = '1=1';
     let params = [];
-    
+
     if (categoria_id) {
       whereConditions += ' AND p.categoria_id = ?';
       params.push(categoria_id);
     }
-    
-    const [inventario] = await req.app.locals.pool.query(`
-      SELECT 
+
+    // Consulta simplificada primero, sin JOINs complejos
+    const sqlQuery = `
+      SELECT
         p.id,
         p.nombre as producto_nombre,
-        p.codigo as producto_codigo,
-        p.precio,
-        c.nombre as categoria_nombre,
-        p.stock_total,
-        COALESCE(ventas_mes.cantidad_vendida, 0) as vendido_mes_actual,
-        COALESCE(devoluciones_mes.cantidad_devuelta, 0) as devuelto_mes_actual,
-        GROUP_CONCAT(CONCAT(um.nombre, ': ', pu.stock) SEPARATOR ', ') as stock_por_unidad
+        COALESCE(p.codigo, '') as producto_codigo,
+        COALESCE(p.precio_venta, 0) as precio,
+        COALESCE(c.nombre, 'Sin categoría') as categoria_nombre,
+        p.stock as stock_total,
+        0 as vendido_mes_actual,
+        0 as devuelto_mes_actual
       FROM productos p
       LEFT JOIN categorias c ON p.categoria_id = c.id
-      LEFT JOIN producto_unidades pu ON p.id = pu.producto_id
-      LEFT JOIN unidades_medida um ON pu.unidad_id = um.id
-      LEFT JOIN (
-        SELECT 
-          vd.producto_id,
-          SUM(vd.cantidad) as cantidad_vendida
-        FROM venta_detalles vd
-        JOIN ventas v ON vd.venta_id = v.id
-        WHERE MONTH(v.fecha) = MONTH(CURRENT_DATE()) 
-        AND YEAR(v.fecha) = YEAR(CURRENT_DATE())
-        GROUP BY vd.producto_id
-      ) ventas_mes ON p.id = ventas_mes.producto_id
-      LEFT JOIN (
-        SELECT 
-          dd.producto_id,
-          SUM(dd.cantidad) as cantidad_devuelta
-        FROM devolucion_detalles dd
-        JOIN devoluciones d ON dd.devolucion_id = d.id
-        WHERE MONTH(d.fecha) = MONTH(CURRENT_DATE()) 
-        AND YEAR(d.fecha) = YEAR(CURRENT_DATE())
-        GROUP BY dd.producto_id
-      ) devoluciones_mes ON p.id = devoluciones_mes.producto_id
       WHERE ${whereConditions}
-      ${stock_minimo ? `AND p.stock_total <= ${parseInt(stock_minimo)}` : ''}
-      GROUP BY p.id, p.nombre, p.codigo, p.precio, c.nombre, p.stock_total, ventas_mes.cantidad_vendida, devoluciones_mes.cantidad_devuelta
-      ORDER BY p.stock_total ASC
-    `, params);
+      ${stock_minimo ? `AND p.stock <= ${parseInt(stock_minimo)}` : ''}
+      ORDER BY p.stock ASC
+    `;
+
+    const [inventario] = await req.app.locals.pool.query(sqlQuery, params);
     
     console.log(`Reporte de inventario generado: ${inventario.length} productos`);
     res.status(200).json(inventario);
@@ -286,6 +265,48 @@ router.get('/resumen-dashboard', async (req, res) => {
   } catch (error) {
     console.error('Error al generar resumen dashboard:', error);
     res.status(500).json({ message: 'Error al generar resumen', error: error.message });
+  }
+});
+
+// GET /api/reportes/debug-productos - Endpoint de debug para ver productos
+router.get('/debug-productos', async (req, res) => {
+  try {
+    console.log('=== DEBUG PRODUCTOS ===');
+
+    // Verificar productos básicos
+    const [productos] = await req.app.locals.pool.query(`
+      SELECT id, nombre, codigo, precio_venta, stock, categoria_id
+      FROM productos
+      LIMIT 10
+    `);
+
+    console.log('Productos encontrados:', productos.length);
+    console.log('Productos:', productos);
+
+    // Verificar categorías
+    const [categorias] = await req.app.locals.pool.query(`
+      SELECT id, nombre FROM categorias LIMIT 10
+    `);
+
+    console.log('Categorías encontradas:', categorias.length);
+    console.log('Categorías:', categorias);
+
+    // Verificar estructura de tablas
+    const [tablas] = await req.app.locals.pool.query(`
+      SHOW TABLES
+    `);
+
+    console.log('Tablas en la BD:', tablas);
+
+    res.json({
+      productos: productos,
+      categorias: categorias,
+      tablas: tablas
+    });
+
+  } catch (error) {
+    console.error('Error en debug productos:', error);
+    res.status(500).json({ message: 'Error en debug', error: error.message });
   }
 });
 

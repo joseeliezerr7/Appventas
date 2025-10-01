@@ -33,6 +33,7 @@ import ReportesScreen from '../screens/reportes/ReportesScreen';
 import ReporteVentasProductoScreen from '../screens/reportes/ReporteVentasProductoScreen';
 import ReporteVentasClienteScreen from '../screens/reportes/ReporteVentasClienteScreen';
 import ReporteVentasVendedorScreen from '../screens/reportes/ReporteVentasVendedorScreen';
+import ReporteInventarioScreen from '../screens/reportes/ReporteInventarioScreen';
 import CierreScreen from '../screens/cierres/CierreScreen';
 import NuevoCierreScreen from '../screens/cierres/NuevoCierreScreen';
 
@@ -99,6 +100,8 @@ const ReportesNavigator = () => (
     <Stack.Screen name="ReporteVentasProducto" component={ReporteVentasProductoScreen} options={{ title: 'Ventas por Producto' }} />
     <Stack.Screen name="ReporteVentasCliente" component={ReporteVentasClienteScreen} options={{ title: 'Ventas por Cliente' }} />
     <Stack.Screen name="ReporteVentasVendedor" component={ReporteVentasVendedorScreen} options={{ title: 'Ventas por Vendedor' }} />
+    <Stack.Screen name="ReporteInventario" component={ReporteInventarioScreen} options={{ title: 'Reporte de Inventario' }} />
+    <Stack.Screen name="ReporteCuentasCobrar" component={ReporteInventarioScreen} options={{ title: 'Cuentas por Cobrar' }} />
     <Stack.Screen name="Proveedores" component={ProveedoresScreen} options={{ title: 'Proveedores' }} />
     <Stack.Screen name="NuevoProveedor" component={NuevoProveedorScreen} options={{ title: 'Nuevo Proveedor' }} />
     <Stack.Screen name="ProveedorDetalle" component={ProveedorDetalleScreen} options={{ title: 'Detalle del Proveedor' }} />

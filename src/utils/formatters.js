@@ -81,13 +81,13 @@ export const capitalizeFirst = (str) => {
 
 export const formatInventoryStatus = (stock, minStock = 10) => {
   const stockNum = parseInt(stock || 0);
-  
+
   if (stockNum === 0) {
     return { text: 'Sin stock', color: '#F44336', icon: 'alert-circle' };
   } else if (stockNum <= minStock) {
     return { text: 'Stock bajo', color: '#FF9800', icon: 'warning' };
   } else {
-    return { text: 'Disponible', color: '#4CAF50', icon: 'checkmark-circle' };
+    return { text: 'Disponible', color: '#4CAF50', icon: 'checkmark-circle-outline' };
   }
 };
 

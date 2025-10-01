@@ -49,8 +49,12 @@ const ReporteInventarioScreen = () => {
       });
 
       const response = await api.get(`/reportes/inventario?${params.toString()}`);
-      setData(response.data || []);
-      setFilteredData(response.data || []);
+
+      // El backend devuelve directamente el array, no un objeto con propiedad data
+      const inventarioData = Array.isArray(response) ? response : (response.data || []);
+
+      setData(inventarioData);
+      setFilteredData(inventarioData);
     } catch (error) {
       console.error('Error al cargar reporte:', error);
       Alert.alert('Error', 'No se pudo cargar el reporte de inventario');
@@ -115,17 +119,23 @@ const ReporteInventarioScreen = () => {
   const exportarDatos = async (formato) => {
     try {
       setMenuVisible(false);
-      
+
       if (!filteredData || !Array.isArray(filteredData) || filteredData.length === 0) {
         Alert.alert('Error', 'No hay datos para exportar');
         return;
       }
 
+      // Preparar datos con el campo estado agregado
+      const dataWithStatus = filteredData.map(item => ({
+        ...item,
+        estado: formatInventoryStatus(item.stock_total || 0).text
+      }));
+
       const headers = ['Código', 'Producto', 'Categoría', 'Stock', 'Precio', 'Vendido Este Mes', 'Estado'];
       const title = `Reporte de Inventario - ${new Date().toLocaleDateString('es-MX')}`;
       const filename = 'reporte_inventario';
 
-      await exportService.exportData(formato, filteredData, filename, headers, title);
+      await exportService.exportData(formato, dataWithStatus, filename, headers, title);
     } catch (error) {
       console.error('Error al exportar:', error);
       Alert.alert('Error', 'No se pudo exportar el reporte');

@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 import { Alert } from 'react-native';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
@@ -111,7 +112,7 @@ class ExportService {
     }
   }
 
-  // Exportar a PDF (HTML convertido a PDF)
+  // Exportar a PDF usando expo-print
   async exportToPDF(data, filename, headers, title) {
     try {
       if (!data || data.length === 0) {
@@ -119,24 +120,30 @@ class ExportService {
         return;
       }
 
-      // Generar HTML
-      const htmlContent = this.generateHTMLTable(data, headers, title);
-      
-      // Guardar como HTML primero
-      const htmlUri = FileSystem.documentDirectory + `${filename}.html`;
-      await FileSystem.writeAsStringAsync(htmlUri, htmlContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+      // Generar HTML optimizado para PDF
+      const htmlContent = this.generatePDFHTML(data, headers, title);
+
+      // Crear PDF usando expo-print
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
       });
 
-      // Compartir archivo HTML (el usuario puede convertir a PDF usando su navegador)
+      // Mover el PDF al directorio de documentos con el nombre correcto
+      const pdfUri = FileSystem.documentDirectory + `${filename}.pdf`;
+      await FileSystem.moveAsync({
+        from: uri,
+        to: pdfUri
+      });
+
+      // Compartir el archivo PDF
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(htmlUri);
-        Alert.alert(
-          'Archivo HTML Generado', 
-          'Se ha generado un archivo HTML que puedes abrir en tu navegador y guardar como PDF usando la función de impresión.'
-        );
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Compartir reporte PDF'
+        });
       } else {
-        Alert.alert('Éxito', `Archivo HTML guardado en: ${htmlUri}`);
+        Alert.alert('Éxito', `Archivo PDF guardado en: ${pdfUri}`);
       }
 
     } catch (error) {
@@ -145,8 +152,8 @@ class ExportService {
     }
   }
 
-  // Generar tabla HTML para PDF
-  generateHTMLTable(data, headers, title) {
+  // Generar HTML optimizado para PDF
+  generatePDFHTML(data, headers, title) {
     const fecha = new Date().toLocaleDateString('es-MX');
     
     const htmlHeaders = headers.map(header => `<th>${header}</th>`).join('');
@@ -155,17 +162,21 @@ class ExportService {
       const cells = headers.map(header => {
         const key = this.getKeyFromHeader(header);
         let value = row[key] || '';
-        
-        // Formatear valores especiales
+        let cssClass = '';
+
+        // Formatear valores especiales y asignar clases CSS
         if (key.includes('fecha') && value) {
           value = formatDate(value);
-        } else if (key.includes('total') || key.includes('precio') || key.includes('ingresos')) {
+        } else if (key.includes('total') || key.includes('precio') || key.includes('ingresos') || key.includes('gastado') || key.includes('vendido')) {
           value = formatCurrency(value);
+          cssClass = 'currency';
+        } else if (key.includes('cantidad') || key.includes('numero') || key.includes('compras') || key.includes('ventas') || key.includes('stock')) {
+          cssClass = 'number';
         }
-        
-        return `<td>${value}</td>`;
+
+        return `<td class="${cssClass}">${value}</td>`;
       }).join('');
-      
+
       return `<tr>${cells}</tr>`;
     }).join('');
 
@@ -176,55 +187,81 @@ class ExportService {
     <meta charset="UTF-8">
     <title>${title}</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px;
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 15px;
             color: #333;
+            font-size: 12px;
+            line-height: 1.4;
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #0066cc;
             padding-bottom: 10px;
         }
         .title {
             color: #0066cc;
-            font-size: 24px;
-            margin: 0;
+            font-size: 20px;
+            margin: 0 0 8px 0;
+            font-weight: bold;
         }
         .subtitle {
             color: #666;
-            font-size: 14px;
-            margin: 5px 0;
+            font-size: 11px;
+            margin: 3px 0;
         }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 20px;
+        .meta-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 10px;
+            color: #888;
         }
-        th, td { 
-            border: 1px solid #ddd; 
-            padding: 8px; 
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 11px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
             text-align: left;
+            vertical-align: top;
         }
-        th { 
-            background-color: #f2f2f2; 
+        th {
+            background-color: #f5f5f5;
             font-weight: bold;
             color: #333;
+            font-size: 11px;
         }
         tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #fafafa;
         }
         .footer {
-            margin-top: 30px;
+            margin-top: 20px;
             text-align: center;
-            font-size: 12px;
-            color: #666;
+            font-size: 9px;
+            color: #888;
             border-top: 1px solid #ddd;
-            padding-top: 10px;
+            padding-top: 8px;
+        }
+        .currency {
+            text-align: right;
+        }
+        .number {
+            text-align: right;
+        }
+        @page {
+            size: A4;
+            margin: 1cm;
         }
         @media print {
-            body { margin: 0; }
+            body {
+                margin: 0;
+                -webkit-print-color-adjust: exact;
+            }
             .no-print { display: none; }
         }
     </style>
@@ -235,7 +272,7 @@ class ExportService {
         <p class="subtitle">Generado el ${fecha}</p>
         <p class="subtitle">Total de registros: ${data.length}</p>
     </div>
-    
+
     <table>
         <thead>
             <tr>${htmlHeaders}</tr>
@@ -244,9 +281,10 @@ class ExportService {
             ${htmlRows}
         </tbody>
     </table>
-    
+
     <div class="footer">
         <p>Sistema de Ventas - Reporte generado automáticamente</p>
+        <p>Página generada el ${new Date().toLocaleString('es-MX')}</p>
     </div>
 </body>
 </html>`;
@@ -255,30 +293,39 @@ class ExportService {
   // Convertir encabezado a clave de objeto
   getKeyFromHeader(header) {
     const mapping = {
+      // Productos
       'Código': 'producto_codigo',
       'Producto': 'producto_nombre',
+      'Categoría': 'categoria_nombre',
+      'Stock': 'stock_total',
+      'Precio': 'precio',
+      'Vendido Este Mes': 'vendido_mes_actual',
+      'Estado': 'estado',
+      // Ventas por producto
       'Cantidad': 'total_cantidad_vendida',
       'Ingresos': 'total_ingresos',
       'Ventas': 'numero_ventas',
       'Precio Prom.': 'precio_promedio',
+      // Clientes
       'Cliente': 'cliente_nombre',
       'Teléfono': 'telefono',
+      'Email': 'email',
+      'Dirección': 'direccion',
       'Compras': 'numero_compras',
       'Total Gastado': 'total_gastado',
       'Ticket Prom.': 'ticket_promedio',
+      'Primera Compra': 'primera_compra',
       'Última Compra': 'ultima_compra',
+      // Vendedores
       'Vendedor': 'vendedor_nombre',
-      'Email': 'email',
       'Total Vendido': 'total_vendido',
       'Clientes Atendidos': 'clientes_atendidos',
-      'Stock': 'stock_total',
-      'Categoría': 'categoria_nombre',
-      'Precio': 'precio',
+      'Primera Venta': 'primera_venta',
+      'Última Venta': 'ultima_venta',
+      // Genérico
       'Métrica': 'metrica',
       'Valor': 'valor',
-      'Período': 'periodo',
-      'Vendedor': 'vendedor_nombre',
-      'Clientes': 'clientes_atendidos'
+      'Período': 'periodo'
     };
     
     return mapping[header] || header.toLowerCase().replace(/ /g, '_');
