@@ -31,18 +31,33 @@ const ReporteVentasClienteScreen = () => {
   const cargarReporte = async () => {
     try {
       setLoading(true);
-      
-      const fechas = calcularFechasPorPeriodo(periodo);
+
       const params = new URLSearchParams();
-      if (fechas.fecha_inicio) params.append('fecha_inicio', fechas.fecha_inicio);
-      if (fechas.fecha_fin) params.append('fecha_fin', fechas.fecha_fin);
+      if (periodo) {
+        params.append('periodo', periodo.toLowerCase().replace(' ', '_'));
+      } else {
+        params.append('periodo', 'este_mes');
+      }
+
+      console.log('Cargando reporte de ventas por cliente con período:', periodo || 'este_mes');
 
       const response = await api.get(`/reportes/ventas-por-cliente?${params.toString()}`);
-      setData(response.data);
-      setFilteredData(response.data);
+      console.log('Respuesta del reporte de clientes:', response);
+      console.log('Tipo de response:', typeof response);
+      console.log('Es Array response:', Array.isArray(response));
+
+      // api.get() devuelve los datos directamente, no envueltos en .data
+      const clientesData = Array.isArray(response) ? response : [];
+
+      console.log('Datos finales a usar:', clientesData);
+      setData(clientesData);
+      setFilteredData(clientesData);
     } catch (error) {
       console.error('Error al cargar reporte:', error);
-      Alert.alert('Error', 'No se pudo cargar el reporte de ventas por cliente');
+      console.error('Detalles del error:', error.response?.data || error.message);
+      Alert.alert('Error', 'No se pudo cargar el reporte de ventas por cliente: ' + (error.message || 'Error desconocido'));
+      setData([]);
+      setFilteredData([]);
     } finally {
       setLoading(false);
     }

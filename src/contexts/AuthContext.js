@@ -101,13 +101,13 @@ export const AuthProvider = ({ children }) => {
       const decodedPayload = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
       const tokenPayload = JSON.parse(decodeURIComponent(escape(atob(decodedPayload))));
       const currentTime = Date.now() / 1000;
-      
+
       if (tokenPayload.exp <= currentTime) {
         console.log('Token expirado, cerrando sesión automáticamente');
         await logout();
         return false;
       }
-      
+
       return true;
     } catch (e) {
       console.log('Error al verificar token:', e);
@@ -116,8 +116,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserProfile = async (profileData) => {
+    try {
+      // Si estamos en modo de desarrollo, simular actualización exitosa
+      if (DEV_MODE) {
+        console.log('Modo de desarrollo: Simulando actualización de perfil');
+        const updatedUser = { ...user, ...profileData };
+
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        return updatedUser;
+      }
+
+      // En producción, enviar los datos al servidor
+      const response = await api.updateUserProfile(user.id, profileData);
+
+      const updatedUser = { ...user, ...response.user };
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Error al actualizar perfil:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout, checkTokenValidity }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, checkTokenValidity, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

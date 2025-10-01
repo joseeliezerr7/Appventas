@@ -5,7 +5,10 @@ import { Alert } from 'react-native';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 class ExportService {
-  
+  constructor() {
+    this.isExporting = false;
+  }
+
   // Exportar a CSV
   async exportToCSV(data, filename, headers) {
     try {
@@ -115,7 +118,12 @@ class ExportService {
   // Exportar a PDF usando expo-print
   async exportToPDF(data, filename, headers, title) {
     try {
+      console.log('PDF Export - Data received:', data);
+      console.log('PDF Export - Headers received:', headers);
+      console.log('PDF Export - Title:', title);
+
       if (!data || data.length === 0) {
+        console.log('PDF Export - No data available');
         Alert.alert('Error', 'No hay datos para exportar');
         return;
       }
@@ -292,11 +300,12 @@ class ExportService {
 
   // Convertir encabezado a clave de objeto
   getKeyFromHeader(header) {
+    console.log('Mapping header:', header);
     const mapping = {
-      // Productos
-      'Código': 'producto_codigo',
-      'Producto': 'producto_nombre',
-      'Categoría': 'categoria_nombre',
+      // Productos - mapping to exact keys as created in earnings report
+      'Código': 'Código',
+      'Producto': 'Producto',
+      'Categoría': 'Categoría',
       'Stock': 'stock_total',
       'Precio': 'precio',
       'Vendido Este Mes': 'vendido_mes_actual',
@@ -322,18 +331,35 @@ class ExportService {
       'Clientes Atendidos': 'clientes_atendidos',
       'Primera Venta': 'primera_venta',
       'Última Venta': 'ultima_venta',
+      // Ganancias/Utilidades - mapping exactly as the keys are created
+      'Cantidad Vendida': 'Cantidad Vendida',
+      'Ingresos Totales': 'Ingresos Totales',
+      'Costos Totales': 'Costos Totales',
+      'Ganancia Bruta': 'Ganancia Bruta',
+      'Margen %': 'Margen %',
+      'Número de Ventas': 'Número de Ventas',
       // Genérico
       'Métrica': 'metrica',
       'Valor': 'valor',
       'Período': 'periodo'
     };
-    
-    return mapping[header] || header.toLowerCase().replace(/ /g, '_');
+
+    const result = mapping[header] || header;
+    console.log(`Mapped '${header}' to '${result}'`);
+    return result;
   }
 
   // Método principal para exportar
   async exportData(formato, data, filename, headers, title) {
     try {
+      if (this.isExporting) {
+        console.log('Export already in progress, ignoring request');
+        return;
+      }
+
+      this.isExporting = true;
+      console.log('Starting export process');
+
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
       const fullFilename = `${filename}_${timestamp}`;
 
@@ -353,6 +379,9 @@ class ExportService {
     } catch (error) {
       console.error('Error en exportación:', error);
       Alert.alert('Error', 'No se pudo completar la exportación');
+    } finally {
+      this.isExporting = false;
+      console.log('Export process finished');
     }
   }
 }

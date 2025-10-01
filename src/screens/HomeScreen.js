@@ -288,7 +288,7 @@ const HomeScreen = () => {
                 <View style={styles.listItem}>
                   <View style={styles.listItemContent}>
                     <Text style={styles.listItemTitle}>Cliente: {venta.clienteNombre}</Text>
-                    <Text style={styles.listItemSubtitle}>Total: ${(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</Text>
+                    <Text style={styles.listItemSubtitle}>Total: L. {(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</Text>
                   </View>
                   <Text style={styles.listItemDate}>
                     {formatearFecha(venta.fecha)}

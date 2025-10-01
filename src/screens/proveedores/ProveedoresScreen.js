@@ -163,7 +163,7 @@ const ProveedoresScreen = () => {
           <Divider style={styles.divider} />
           <View style={styles.proveedorFooter}>
             <Text>Última compra: {item.ultimaCompra}</Text>
-            <Text style={styles.totalText}>Total: ${item.totalCompras.toFixed(2)}</Text>
+            <Text style={styles.totalText}>Total: L. {item.totalCompras.toFixed(2)}</Text>
           </View>
         </Card.Content>
       </Card>

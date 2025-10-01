@@ -271,7 +271,7 @@ const ClienteDetalleScreen = () => {
                 key={venta.id}
                 title={`Venta #${venta.id}`}
                 description={`Fecha: ${venta.fecha}`}
-                right={() => <Text style={styles.ventaTotal}>${(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</Text>}
+                right={() => <Text style={styles.ventaTotal}>L. {(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</Text>}
                 onPress={() => navigation.navigate('DetalleVenta', { venta })}
                 style={styles.ventaItem}
               />

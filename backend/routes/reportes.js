@@ -4,16 +4,36 @@ const router = express.Router();
 // GET /api/reportes/ventas-por-producto - Reporte de ventas por producto
 router.get('/ventas-por-producto', async (req, res) => {
   try {
-    const { fecha_inicio, fecha_fin, producto_id } = req.query;
-    
+    const { fecha_inicio, fecha_fin, producto_id, periodo = 'este_mes' } = req.query;
+
     let whereConditions = '1=1';
     let params = [];
-    
+
+    // Filtros por fecha o período
     if (fecha_inicio && fecha_fin) {
       whereConditions += ' AND v.fecha BETWEEN ? AND ?';
       params.push(fecha_inicio, fecha_fin);
+    } else {
+      // Si no hay fechas específicas, usar el período
+      switch (periodo.toLowerCase()) {
+        case 'hoy':
+          whereConditions += ' AND DATE(v.fecha) = CURDATE()';
+          break;
+        case 'esta_semana':
+          whereConditions += ' AND YEARWEEK(v.fecha, 1) = YEARWEEK(CURDATE(), 1)';
+          break;
+        case 'este_mes':
+          whereConditions += ' AND MONTH(v.fecha) = MONTH(CURDATE()) AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+        case 'ultimo_trimestre':
+          whereConditions += ' AND v.fecha >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+          break;
+        case 'este_año':
+          whereConditions += ' AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+      }
     }
-    
+
     if (producto_id) {
       whereConditions += ' AND vd.producto_id = ?';
       params.push(producto_id);
@@ -49,16 +69,36 @@ router.get('/ventas-por-producto', async (req, res) => {
 // GET /api/reportes/ventas-por-cliente - Reporte de ventas por cliente
 router.get('/ventas-por-cliente', async (req, res) => {
   try {
-    const { fecha_inicio, fecha_fin, cliente_id } = req.query;
-    
+    const { fecha_inicio, fecha_fin, cliente_id, periodo = 'este_mes' } = req.query;
+
     let whereConditions = '1=1';
     let params = [];
-    
+
+    // Filtros por fecha o período
     if (fecha_inicio && fecha_fin) {
       whereConditions += ' AND v.fecha BETWEEN ? AND ?';
       params.push(fecha_inicio, fecha_fin);
+    } else {
+      // Si no hay fechas específicas, usar el período
+      switch (periodo.toLowerCase()) {
+        case 'hoy':
+          whereConditions += ' AND DATE(v.fecha) = CURDATE()';
+          break;
+        case 'esta_semana':
+          whereConditions += ' AND YEARWEEK(v.fecha, 1) = YEARWEEK(CURDATE(), 1)';
+          break;
+        case 'este_mes':
+          whereConditions += ' AND MONTH(v.fecha) = MONTH(CURDATE()) AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+        case 'ultimo_trimestre':
+          whereConditions += ' AND v.fecha >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+          break;
+        case 'este_año':
+          whereConditions += ' AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+      }
     }
-    
+
     if (cliente_id) {
       whereConditions += ' AND v.cliente_id = ?';
       params.push(cliente_id);
@@ -93,16 +133,36 @@ router.get('/ventas-por-cliente', async (req, res) => {
 // GET /api/reportes/ventas-por-vendedor - Reporte de ventas por vendedor
 router.get('/ventas-por-vendedor', async (req, res) => {
   try {
-    const { fecha_inicio, fecha_fin, usuario_id } = req.query;
-    
+    const { fecha_inicio, fecha_fin, usuario_id, periodo = 'este_mes' } = req.query;
+
     let whereConditions = '1=1';
     let params = [];
-    
+
+    // Filtros por fecha o período
     if (fecha_inicio && fecha_fin) {
       whereConditions += ' AND v.fecha BETWEEN ? AND ?';
       params.push(fecha_inicio, fecha_fin);
+    } else {
+      // Si no hay fechas específicas, usar el período
+      switch (periodo.toLowerCase()) {
+        case 'hoy':
+          whereConditions += ' AND DATE(v.fecha) = CURDATE()';
+          break;
+        case 'esta_semana':
+          whereConditions += ' AND YEARWEEK(v.fecha, 1) = YEARWEEK(CURDATE(), 1)';
+          break;
+        case 'este_mes':
+          whereConditions += ' AND MONTH(v.fecha) = MONTH(CURDATE()) AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+        case 'ultimo_trimestre':
+          whereConditions += ' AND v.fecha >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+          break;
+        case 'este_año':
+          whereConditions += ' AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+      }
     }
-    
+
     if (usuario_id) {
       whereConditions += ' AND v.usuario_id = ?';
       params.push(usuario_id);
@@ -268,45 +328,199 @@ router.get('/resumen-dashboard', async (req, res) => {
   }
 });
 
-// GET /api/reportes/debug-productos - Endpoint de debug para ver productos
-router.get('/debug-productos', async (req, res) => {
+// GET /api/reportes/ganancias - Reporte de ganancias/utilidades
+router.get('/ganancias', async (req, res) => {
   try {
-    console.log('=== DEBUG PRODUCTOS ===');
+    const { fecha_inicio, fecha_fin, producto_id, categoria_id, periodo = 'este_mes' } = req.query;
 
-    // Verificar productos básicos
-    const [productos] = await req.app.locals.pool.query(`
-      SELECT id, nombre, codigo, precio_venta, stock, categoria_id
-      FROM productos
-      LIMIT 10
-    `);
+    let whereConditions = '1=1';
+    let params = [];
 
-    console.log('Productos encontrados:', productos.length);
-    console.log('Productos:', productos);
+    // Filtros por fecha
+    if (fecha_inicio && fecha_fin) {
+      whereConditions += ' AND v.fecha BETWEEN ? AND ?';
+      params.push(fecha_inicio, fecha_fin);
+    } else {
+      // Si no hay fechas específicas, usar el periodo
+      switch (periodo.toLowerCase()) {
+        case 'hoy':
+          whereConditions += ' AND DATE(v.fecha) = CURDATE()';
+          break;
+        case 'esta_semana':
+          whereConditions += ' AND YEARWEEK(v.fecha, 1) = YEARWEEK(CURDATE(), 1)';
+          break;
+        case 'este_mes':
+          whereConditions += ' AND MONTH(v.fecha) = MONTH(CURDATE()) AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+        case 'ultimo_trimestre':
+          whereConditions += ' AND v.fecha >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+          break;
+        case 'este_año':
+          whereConditions += ' AND YEAR(v.fecha) = YEAR(CURDATE())';
+          break;
+      }
+    }
 
-    // Verificar categorías
-    const [categorias] = await req.app.locals.pool.query(`
-      SELECT id, nombre FROM categorias LIMIT 10
-    `);
+    // Filtros adicionales
+    if (producto_id) {
+      whereConditions += ' AND vd.producto_id = ?';
+      params.push(producto_id);
+    }
 
-    console.log('Categorías encontradas:', categorias.length);
-    console.log('Categorías:', categorias);
+    if (categoria_id) {
+      whereConditions += ' AND p.categoria_id = ?';
+      params.push(categoria_id);
+    }
 
-    // Verificar estructura de tablas
-    const [tablas] = await req.app.locals.pool.query(`
-      SHOW TABLES
-    `);
+    // Consulta principal de ganancias
+    const [ganancias] = await req.app.locals.pool.query(`
+      SELECT
+        p.id as producto_id,
+        p.nombre as producto_nombre,
+        p.codigo as producto_codigo,
+        c.nombre as categoria_nombre,
+        SUM(vd.cantidad) as total_cantidad_vendida,
+        SUM(vd.subtotal) as total_ingresos,
+        SUM(vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0)) as total_costos,
+        SUM(vd.subtotal - (vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0))) as ganancia_bruta,
+        CASE
+          WHEN SUM(vd.subtotal) > 0
+          THEN ROUND(((SUM(vd.subtotal - (vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0))) / SUM(vd.subtotal)) * 100), 2)
+          ELSE 0
+        END as margen_ganancia_porcentaje,
+        COUNT(DISTINCT v.id) as numero_ventas,
+        MIN(v.fecha) as primera_venta,
+        MAX(v.fecha) as ultima_venta
+      FROM venta_detalles vd
+      JOIN ventas v ON vd.venta_id = v.id
+      JOIN productos p ON vd.producto_id = p.id
+      LEFT JOIN producto_unidades pu ON vd.producto_id = pu.producto_id AND vd.unidad_id = pu.unidad_id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE ${whereConditions}
+      GROUP BY p.id, p.nombre, p.codigo, c.nombre
+      ORDER BY ganancia_bruta DESC
+    `, params);
 
-    console.log('Tablas en la BD:', tablas);
+    // Resumen general de ganancias
+    const [resumenTotal] = await req.app.locals.pool.query(`
+      SELECT
+        SUM(vd.subtotal) as ingresos_totales,
+        SUM(vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0)) as costos_totales,
+        SUM(vd.subtotal - (vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0))) as ganancia_total,
+        COUNT(DISTINCT v.id) as total_ventas,
+        COUNT(DISTINCT p.id) as productos_vendidos,
+        CASE
+          WHEN SUM(vd.subtotal) > 0
+          THEN ROUND(((SUM(vd.subtotal - (vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0))) / SUM(vd.subtotal)) * 100), 2)
+          ELSE 0
+        END as margen_promedio
+      FROM venta_detalles vd
+      JOIN ventas v ON vd.venta_id = v.id
+      JOIN productos p ON vd.producto_id = p.id
+      LEFT JOIN producto_unidades pu ON vd.producto_id = pu.producto_id AND vd.unidad_id = pu.unidad_id
+      WHERE ${whereConditions}
+    `, params);
 
-    res.json({
-      productos: productos,
-      categorias: categorias,
-      tablas: tablas
-    });
+    const resultado = {
+      resumen: resumenTotal[0] || {
+        ingresos_totales: 0,
+        costos_totales: 0,
+        ganancia_total: 0,
+        total_ventas: 0,
+        productos_vendidos: 0,
+        margen_promedio: 0
+      },
+      detalles_por_producto: ganancias,
+      filtros_aplicados: {
+        fecha_inicio,
+        fecha_fin,
+        producto_id,
+        categoria_id,
+        periodo
+      }
+    };
 
+    console.log(`Reporte de ganancias generado: ${ganancias.length} productos, ganancia total: ${resultado.resumen.ganancia_total}`);
+    res.status(200).json(resultado);
   } catch (error) {
-    console.error('Error en debug productos:', error);
-    res.status(500).json({ message: 'Error en debug', error: error.message });
+    console.error('Error al generar reporte de ganancias:', error);
+    res.status(500).json({ message: 'Error al generar reporte de ganancias', error: error.message });
+  }
+});
+
+// GET /api/reportes/ganancias-por-periodo - Reporte de ganancias por períodos
+router.get('/ganancias-por-periodo', async (req, res) => {
+  try {
+    const { tipo_periodo = 'mensual', fecha_inicio, fecha_fin } = req.query;
+
+    let formatoFecha = '';
+    let groupBy = '';
+
+    switch (tipo_periodo.toLowerCase()) {
+      case 'diario':
+        formatoFecha = 'DATE(v.fecha)';
+        groupBy = 'DATE(v.fecha)';
+        break;
+      case 'semanal':
+        formatoFecha = 'YEARWEEK(v.fecha, 1)';
+        groupBy = 'YEARWEEK(v.fecha, 1)';
+        break;
+      case 'mensual':
+        formatoFecha = 'DATE_FORMAT(v.fecha, "%Y-%m")';
+        groupBy = 'YEAR(v.fecha), MONTH(v.fecha)';
+        break;
+      case 'trimestral':
+        formatoFecha = 'CONCAT(YEAR(v.fecha), "-Q", QUARTER(v.fecha))';
+        groupBy = 'YEAR(v.fecha), QUARTER(v.fecha)';
+        break;
+      case 'anual':
+        formatoFecha = 'YEAR(v.fecha)';
+        groupBy = 'YEAR(v.fecha)';
+        break;
+      default:
+        formatoFecha = 'DATE_FORMAT(v.fecha, "%Y-%m")';
+        groupBy = 'YEAR(v.fecha), MONTH(v.fecha)';
+    }
+
+    let whereConditions = '1=1';
+    let params = [];
+
+    if (fecha_inicio && fecha_fin) {
+      whereConditions += ' AND v.fecha BETWEEN ? AND ?';
+      params.push(fecha_inicio, fecha_fin);
+    }
+
+    const [gananciasPerPeriodo] = await req.app.locals.pool.query(`
+      SELECT
+        ${formatoFecha} as periodo,
+        SUM(vd.subtotal) as ingresos_periodo,
+        SUM(vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0)) as costos_periodo,
+        SUM(vd.subtotal - (vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0))) as ganancia_periodo,
+        COUNT(DISTINCT v.id) as ventas_periodo,
+        COUNT(DISTINCT vd.producto_id) as productos_vendidos,
+        CASE
+          WHEN SUM(vd.subtotal) > 0
+          THEN ROUND(((SUM(vd.subtotal - (vd.cantidad * COALESCE(pu.costo, p.precio_compra, 0))) / SUM(vd.subtotal)) * 100), 2)
+          ELSE 0
+        END as margen_periodo
+      FROM venta_detalles vd
+      JOIN ventas v ON vd.venta_id = v.id
+      JOIN productos p ON vd.producto_id = p.id
+      LEFT JOIN producto_unidades pu ON vd.producto_id = pu.producto_id AND vd.unidad_id = pu.unidad_id
+      WHERE ${whereConditions}
+      GROUP BY ${groupBy}
+      ORDER BY periodo DESC
+    `, params);
+
+    console.log(`Reporte de ganancias por ${tipo_periodo} generado: ${gananciasPerPeriodo.length} períodos`);
+    res.status(200).json({
+      tipo_periodo,
+      periodos: gananciasPerPeriodo,
+      total_periodos: gananciasPerPeriodo.length
+    });
+  } catch (error) {
+    console.error('Error al generar reporte de ganancias por período:', error);
+    res.status(500).json({ message: 'Error al generar reporte de ganancias por período', error: error.message });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
-import { Text, Card, FAB, List, Divider, ActivityIndicator, Button, IconButton } from 'react-native-paper';
+import { Text, Card, FAB, List, Divider, ActivityIndicator, Button, IconButton, Searchbar, Chip } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
@@ -10,6 +10,9 @@ const UsuariosScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredUsuarios, setFilteredUsuarios] = useState([]);
+  const [selectedFilter, setSelectedFilter] = useState('todos'); // todos, admin, vendedor, supervisor, gerente
 
   const cargarUsuarios = async () => {
     try {
@@ -34,6 +37,7 @@ const UsuariosScreen = () => {
       if (Array.isArray(usuariosData)) {
         console.log('Usuarios cargados correctamente:', usuariosData.length);
         setUsuarios(usuariosData);
+        setFilteredUsuarios(usuariosData);
       } else {
         console.error('Formato de respuesta inválido:', usuariosData);
         Alert.alert('Error', 'Formato de datos inválido');
@@ -46,6 +50,7 @@ const UsuariosScreen = () => {
           { id: 4, nombre: 'Ana Rodríguez', email: 'ana@ejemplo.com', rol: 'supervisor', activo: true },
         ];
         setUsuarios(usuariosEjemplo);
+        setFilteredUsuarios(usuariosEjemplo);
       }
     } catch (error) {
       console.error('Error al cargar usuarios:', error);
@@ -68,6 +73,7 @@ const UsuariosScreen = () => {
           { id: 4, nombre: 'Ana Rodríguez', email: 'ana@ejemplo.com', rol: 'supervisor', activo: true },
         ];
         setUsuarios(usuariosEjemplo);
+        setFilteredUsuarios(usuariosEjemplo);
       }
     } finally {
       setLoading(false);
@@ -75,9 +81,11 @@ const UsuariosScreen = () => {
     }
   };
 
-  // Ya no necesitamos este useEffect inicial porque useFocusEffect lo reemplaza
-  // y se ejecutará tanto al montar el componente como al volver a él
-  
+  // Actualizar filtros cuando cambie la lista de usuarios
+  useEffect(() => {
+    filterUsuarios();
+  }, [usuarios]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Recargar usuarios cuando la pantalla obtiene el foco (al iniciar o regresar de otra pantalla)
   useFocusEffect(
     useCallback(() => {
@@ -94,6 +102,47 @@ const UsuariosScreen = () => {
   const onRefresh = () => {
     setRefreshing(true);
     cargarUsuarios();
+  };
+
+  // Función para filtrar usuarios basado en búsqueda y filtro de rol
+  const filterUsuarios = (searchText = searchQuery, roleFilter = selectedFilter) => {
+    let filtered = usuarios;
+
+    // Filtrar por rol si no es "todos"
+    if (roleFilter !== 'todos') {
+      filtered = filtered.filter(usuario => usuario.rol === roleFilter);
+    }
+
+    // Filtrar por texto de búsqueda
+    if (searchText.trim() !== '') {
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter(usuario =>
+        usuario.nombre.toLowerCase().includes(searchLower) ||
+        usuario.email.toLowerCase().includes(searchLower) ||
+        usuario.rol.toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredUsuarios(filtered);
+  };
+
+  // Manejar cambio en el texto de búsqueda
+  const handleSearchChange = (query) => {
+    setSearchQuery(query);
+    filterUsuarios(query, selectedFilter);
+  };
+
+  // Manejar cambio en el filtro de rol
+  const handleRoleFilterChange = (role) => {
+    setSelectedFilter(role);
+    filterUsuarios(searchQuery, role);
+  };
+
+  // Limpiar búsqueda
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSelectedFilter('todos');
+    setFilteredUsuarios(usuarios);
   };
 
   const handleEditarUsuario = (usuario) => {
@@ -165,11 +214,75 @@ const UsuariosScreen = () => {
         }
       >
         <Text style={styles.title}>Gestión de Usuarios</Text>
-        
-        {usuarios.length > 0 ? (
+
+        {/* Barra de búsqueda */}
+        <Searchbar
+          placeholder="Buscar por nombre, email o rol"
+          onChangeText={handleSearchChange}
+          value={searchQuery}
+          style={styles.searchBar}
+          icon="magnify"
+          clearIcon="close"
+          onIconPress={() => {}}
+          onClearIconPress={clearSearch}
+        />
+
+        {/* Filtros por rol */}
+        <View style={styles.filtersContainer}>
+          <Text style={styles.filtersTitle}>Filtrar por rol:</Text>
+          <View style={styles.chipContainer}>
+            <Chip
+              selected={selectedFilter === 'todos'}
+              onPress={() => handleRoleFilterChange('todos')}
+              style={styles.chip}
+              textStyle={selectedFilter === 'todos' ? styles.selectedChipText : styles.chipText}
+            >
+              Todos ({usuarios.length})
+            </Chip>
+            <Chip
+              selected={selectedFilter === 'admin'}
+              onPress={() => handleRoleFilterChange('admin')}
+              style={styles.chip}
+              textStyle={selectedFilter === 'admin' ? styles.selectedChipText : styles.chipText}
+            >
+              Admin ({usuarios.filter(u => u.rol === 'admin').length})
+            </Chip>
+            <Chip
+              selected={selectedFilter === 'supervisor'}
+              onPress={() => handleRoleFilterChange('supervisor')}
+              style={styles.chip}
+              textStyle={selectedFilter === 'supervisor' ? styles.selectedChipText : styles.chipText}
+            >
+              Supervisor ({usuarios.filter(u => u.rol === 'supervisor').length})
+            </Chip>
+            <Chip
+              selected={selectedFilter === 'gerente'}
+              onPress={() => handleRoleFilterChange('gerente')}
+              style={styles.chip}
+              textStyle={selectedFilter === 'gerente' ? styles.selectedChipText : styles.chipText}
+            >
+              Gerente ({usuarios.filter(u => u.rol === 'gerente').length})
+            </Chip>
+            <Chip
+              selected={selectedFilter === 'vendedor'}
+              onPress={() => handleRoleFilterChange('vendedor')}
+              style={styles.chip}
+              textStyle={selectedFilter === 'vendedor' ? styles.selectedChipText : styles.chipText}
+            >
+              Vendedor ({usuarios.filter(u => u.rol === 'vendedor').length})
+            </Chip>
+          </View>
+        </View>
+
+        {/* Información de resultados */}
+        <Text style={styles.resultsInfo}>
+          Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
+        </Text>
+
+        {filteredUsuarios.length > 0 ? (
           <Card style={styles.card}>
             <Card.Content>
-              {usuarios.map((usuario, index) => (
+              {filteredUsuarios.map((usuario, index) => (
                 <React.Fragment key={usuario.id}>
                   <List.Item
                     title={usuario.nombre}
@@ -192,17 +305,33 @@ const UsuariosScreen = () => {
                     )}
                     titleStyle={usuario.activo ? styles.usuarioActivo : styles.usuarioInactivo}
                   />
-                  {index < usuarios.length - 1 && <Divider />}
+                  {index < filteredUsuarios.length - 1 && <Divider />}
                 </React.Fragment>
               ))}
             </Card.Content>
           </Card>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No hay usuarios registrados</Text>
-            <Button mode="outlined" onPress={handleNuevoUsuario}>
-              Crear primer usuario
-            </Button>
+            {usuarios.length === 0 ? (
+              <>
+                <Text style={styles.emptyStateText}>No hay usuarios registrados</Text>
+                <Button mode="outlined" onPress={handleNuevoUsuario}>
+                  Crear primer usuario
+                </Button>
+              </>
+            ) : (
+              <>
+                <Text style={styles.emptyStateText}>
+                  No se encontraron usuarios que coincidan con tu búsqueda
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Intenta con otros términos o limpia los filtros
+                </Text>
+                <Button mode="outlined" onPress={clearSearch} icon="filter-remove">
+                  Limpiar filtros
+                </Button>
+              </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -276,6 +405,50 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#2196F3',
+  },
+  // Estilos para búsqueda y filtros
+  searchBar: {
+    marginBottom: 16,
+    elevation: 2,
+  },
+  filtersContainer: {
+    marginBottom: 16,
+  },
+  filtersTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  chipText: {
+    fontSize: 12,
+  },
+  selectedChipText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  resultsInfo: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 16,
   },
 });
 

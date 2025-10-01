@@ -567,7 +567,7 @@ const NuevoProductoScreen = () => {
             <DataTable.Row key={index}>
               <DataTable.Cell>{unidad.nombre || unidad.abreviatura}</DataTable.Cell>
               <DataTable.Cell numeric>{unidad.factor_conversion}</DataTable.Cell>
-              <DataTable.Cell numeric>${parseFloat(unidad.precio).toFixed(2)}</DataTable.Cell>
+              <DataTable.Cell numeric>L. {parseFloat(unidad.precio).toFixed(2)}</DataTable.Cell>
               <DataTable.Cell numeric>{unidad.stock}</DataTable.Cell>
               <DataTable.Cell>
                 <TouchableOpacity onPress={() => handleSetPrincipal(index)}>

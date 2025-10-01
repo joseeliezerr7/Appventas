@@ -20,6 +20,7 @@ const NuevoUsuarioScreen = () => {
   const roles = [
     { value: 'admin', label: 'Administrador' },
     { value: 'supervisor', label: 'Supervisor' },
+    { value: 'gerente', label: 'Gerente' },
     { value: 'vendedor', label: 'Vendedor' }
   ];
 

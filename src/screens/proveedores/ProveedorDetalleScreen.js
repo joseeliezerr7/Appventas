@@ -248,7 +248,7 @@ const ProveedorDetalleScreen = () => {
               key={producto.id}
               title={producto.nombre}
               description={`Código: ${producto.codigo} | Stock: ${producto.stock}`}
-              right={() => <Text style={styles.precioText}>${producto.precio.toFixed(2)}</Text>}
+              right={() => <Text style={styles.precioText}>L. {producto.precio.toFixed(2)}</Text>}
               onPress={() => navigation.navigate('ProductoDetalle', { productoId: producto.id })}
               style={styles.productoItem}
             />
@@ -272,7 +272,7 @@ const ProveedorDetalleScreen = () => {
           
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Total compras:</Text>
-            <Text style={styles.infoValue}>${proveedor.totalCompras.toFixed(2)}</Text>
+            <Text style={styles.infoValue}>L. {proveedor.totalCompras.toFixed(2)}</Text>
           </View>
           
           <View style={styles.infoRow}>

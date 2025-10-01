@@ -1,11 +1,6 @@
 export const formatCurrency = (amount) => {
   const number = parseFloat(amount || 0);
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(number);
+  return `L. ${number.toFixed(2)}`;
 };
 
 export const formatNumber = (number, decimals = 0) => {

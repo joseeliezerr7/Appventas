@@ -1,0 +1,19 @@
+# Backend files - not needed for mobile build
+backend/
+
+# Debug and temp files
+DEBUG_REPORTES.md
+INSTALL_DEPENDENCIES.md
+temp_assets/
+
+# Git files
+.git/
+.gitignore
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Build artifacts
+dist/
+.expo/
+web-build/

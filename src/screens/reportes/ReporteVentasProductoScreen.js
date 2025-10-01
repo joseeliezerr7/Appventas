@@ -37,24 +37,47 @@ const ReporteVentasProductoScreen = () => {
   const cargarReporte = async (filtrosCustom = null) => {
     try {
       setLoading(true);
-      
-      // Usar filtros custom o calcular fechas basadas en el período
-      const filtrosFinales = filtrosCustom || { ...filters, ...calcularFechasPorPeriodo(periodo) };
-      setFilters(filtrosFinales);
-      
-      const params = new URLSearchParams();
-      Object.entries(filtrosFinales).forEach(([key, value]) => {
-        if (value !== null && value !== '' && value !== undefined) {
-          params.append(key, value);
-        }
-      });
 
-      const response = await api.get(`/reportes/ventas-por-producto?${params.toString()}`);
-      setData(response.data);
-      setFilteredData(response.data);
+      let endpoint = '/reportes/ventas-por-producto';
+      let params = new URLSearchParams();
+
+      if (filtrosCustom) {
+        // Si hay filtros custom, usar fechas específicas
+        Object.entries(filtrosCustom).forEach(([key, value]) => {
+          if (value !== null && value !== '' && value !== undefined) {
+            params.append(key, value);
+          }
+        });
+        setFilters(filtrosCustom);
+      } else {
+        // Si no hay filtros custom, usar período (más simple y eficiente)
+        if (periodo) {
+          params.append('periodo', periodo.toLowerCase().replace(' ', '_'));
+        } else {
+          params.append('periodo', 'este_mes'); // Por defecto
+        }
+      }
+
+      console.log('Cargando reporte con período/filtros:', periodo || 'este_mes');
+      console.log('URL completa:', `${endpoint}?${params.toString()}`);
+
+      const response = await api.get(`${endpoint}?${params.toString()}`);
+      console.log('Respuesta del reporte:', response);
+      console.log('Tipo de response:', typeof response);
+      console.log('Es Array response:', Array.isArray(response));
+
+      // api.get() devuelve los datos directamente, no envueltos en .data
+      const productosData = Array.isArray(response) ? response : [];
+
+      console.log('Datos finales a usar:', productosData);
+      setData(productosData);
+      setFilteredData(productosData);
     } catch (error) {
       console.error('Error al cargar reporte:', error);
-      Alert.alert('Error', 'No se pudo cargar el reporte de ventas por producto');
+      console.error('Detalles del error:', error.response?.data || error.message);
+      Alert.alert('Error', 'No se pudo cargar el reporte de ventas por producto: ' + (error.message || 'Error desconocido'));
+      setData([]);
+      setFilteredData([]);
     } finally {
       setLoading(false);
     }

@@ -522,6 +522,14 @@ const api = {
       method: 'DELETE'
     });
   },
+
+  // Perfil de usuario
+  updateUserProfile(id, profileData) {
+    return fetchWithToken(`/usuarios/${id}/perfil`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData)
+    });
+  },
 };
 
 export default api;

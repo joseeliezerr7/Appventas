@@ -1,13 +1,31 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Alert, Image } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
+import * as FileSystem from 'expo-file-system';
 import { useAuth } from '../../contexts/AuthContext';
 
 const LoginScreen = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const [customLogo, setCustomLogo] = useState(null);
   const { login, error, loading } = useAuth();
+
+  useEffect(() => {
+    loadCustomLogo();
+  }, []);
+
+  const loadCustomLogo = async () => {
+    try {
+      const logoPath = FileSystem.documentDirectory + 'logo.png';
+      const logoExists = await FileSystem.getInfoAsync(logoPath);
+      if (logoExists.exists) {
+        setCustomLogo(logoPath);
+      }
+    } catch (error) {
+      console.log('No se pudo cargar el logo personalizado:', error);
+    }
+  };
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -29,8 +47,14 @@ const LoginScreen = () => {
       >
         <View style={styles.innerContainer}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>VA</Text>
-            <Text style={styles.appName}>Ventas App</Text>
+            {customLogo ? (
+              <Image source={{ uri: customLogo }} style={styles.customLogo} resizeMode="contain" />
+            ) : (
+              <>
+                <Text style={styles.logoText}>VA</Text>
+                <Text style={styles.appName}>Ventas App</Text>
+              </>
+            )}
           </View>
 
           <View style={styles.formContainer}>
@@ -102,6 +126,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#007bff',
+  },
+  customLogo: {
+    width: 200,
+    height: 120,
+    marginBottom: 20,
   },
   formContainer: {
     marginBottom: 30,

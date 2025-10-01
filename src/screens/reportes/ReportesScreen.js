@@ -28,10 +28,12 @@ const ReportesScreen = () => {
       
       const response = await api.get(`/reportes/resumen-dashboard?periodo=${periodo}`);
       console.log('Respuesta del servidor:', response);
-      
-      if (response && response.data) {
-        console.log('Datos del resumen:', response.data);
-        setResumenVentas(response.data);
+      console.log('Tipo de response:', typeof response);
+
+      // api.get() devuelve los datos directamente, no envueltos en .data
+      if (response && typeof response === 'object') {
+        console.log('Datos del resumen:', response);
+        setResumenVentas(response);
       } else {
         console.warn('Respuesta vacía o sin datos');
         // Usar datos por defecto si no hay respuesta
@@ -68,35 +70,35 @@ const ReportesScreen = () => {
   const reportesDisponibles = [
     {
       id: 1,
-      titulo: 'Ventas por Producto',
-      descripcion: 'Análisis detallado de ventas por cada producto',
-      icono: 'cube-outline',
+      titulo: 'Ganancias y Utilidades',
+      descripcion: 'Análisis de rentabilidad y márgenes de ganancia',
+      icono: 'trending-up-outline',
       color: '#4CAF50',
-      ruta: 'ReporteVentasProducto'
+      ruta: 'ReporteGanancias'
     },
     {
       id: 2,
-      titulo: 'Ventas por Cliente',
-      descripcion: 'Análisis de ventas agrupadas por cliente',
-      icono: 'people-outline',
+      titulo: 'Ventas por Producto',
+      descripcion: 'Análisis detallado de ventas por cada producto',
+      icono: 'cube-outline',
       color: '#2196F3',
-      ruta: 'ReporteVentasCliente'
+      ruta: 'ReporteVentasProducto'
     },
     {
       id: 3,
-      titulo: 'Ventas por Vendedor',
-      descripcion: 'Desempeño de ventas por cada vendedor',
-      icono: 'person-outline',
+      titulo: 'Ventas por Cliente',
+      descripcion: 'Análisis de ventas agrupadas por cliente',
+      icono: 'people-outline',
       color: '#9C27B0',
-      ruta: 'ReporteVentasVendedor'
+      ruta: 'ReporteVentasCliente'
     },
     {
       id: 4,
-      titulo: 'Devoluciones',
-      descripcion: 'Análisis de devoluciones y motivos',
-      icono: 'return-down-back-outline',
-      color: '#F44336',
-      ruta: 'Devoluciones'
+      titulo: 'Ventas por Vendedor',
+      descripcion: 'Desempeño de ventas por cada vendedor',
+      icono: 'person-outline',
+      color: '#FF5722',
+      ruta: 'ReporteVentasVendedor'
     },
     {
       id: 5,
@@ -108,6 +110,14 @@ const ReportesScreen = () => {
     },
     {
       id: 6,
+      titulo: 'Devoluciones',
+      descripcion: 'Análisis de devoluciones y motivos',
+      icono: 'return-down-back-outline',
+      color: '#F44336',
+      ruta: 'Devoluciones'
+    },
+    {
+      id: 7,
       titulo: 'Cuentas por Cobrar',
       descripcion: 'Estado de cuentas pendientes por cobrar',
       icono: 'cash-outline',

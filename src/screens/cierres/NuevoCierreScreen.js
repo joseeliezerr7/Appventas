@@ -91,7 +91,7 @@ const NuevoCierreScreen = () => {
     const totalIngresado = efectivo + tarjeta + transferencia + credito;
     
     if (Math.abs(totalIngresado - totalNeto) > 0.01) {
-      newErrors.montos = `El total ingresado (${totalIngresado.toFixed(2)}) no coincide con el total de ventas neto (${totalNeto.toFixed(2)})`;
+      newErrors.montos = `El total ingresado (L. ${totalIngresado.toFixed(2)}) no coincide con el total de ventas neto (L. ${totalNeto.toFixed(2)})`;
     }
     
     setErrors(newErrors);
@@ -176,20 +176,20 @@ const NuevoCierreScreen = () => {
           <View style={styles.resumenContainer}>
             <View style={styles.resumenItem}>
               <Text style={styles.resumenLabel}>Total Ventas</Text>
-              <Text style={styles.resumenValue}>${totalVentas.toFixed(2)}</Text>
+              <Text style={styles.resumenValue}>L. {totalVentas.toFixed(2)}</Text>
             </View>
             
             <View style={styles.resumenItem}>
               <Text style={styles.resumenLabel}>Devoluciones</Text>
               <Text style={[styles.resumenValue, styles.devolucionesValue]}>
-                -${totalDevoluciones.toFixed(2)}
+                -L. {totalDevoluciones.toFixed(2)}
               </Text>
             </View>
             
             <View style={styles.resumenItem}>
               <Text style={styles.resumenLabel}>Total Neto</Text>
               <Text style={[styles.resumenValue, styles.totalNetoValue]}>
-                ${totalNeto.toFixed(2)}
+                L. {totalNeto.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -213,7 +213,7 @@ const NuevoCierreScreen = () => {
                 <DataTable.Cell>{venta.hora}</DataTable.Cell>
                 <DataTable.Cell>{venta.cliente}</DataTable.Cell>
                 <DataTable.Cell>{venta.metodoPago}</DataTable.Cell>
-                <DataTable.Cell numeric>${(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</DataTable.Cell>
+                <DataTable.Cell numeric>L. {(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</DataTable.Cell>
               </DataTable.Row>
             ))}
           </DataTable>
@@ -233,7 +233,7 @@ const NuevoCierreScreen = () => {
           onChangeText={(text) => handleChange('efectivo', text)}
           style={styles.input}
           keyboardType="numeric"
-          left={<TextInput.Affix text="$" />}
+          left={<TextInput.Affix text="L." />}
         />
         
         <TextInput
@@ -242,7 +242,7 @@ const NuevoCierreScreen = () => {
           onChangeText={(text) => handleChange('tarjeta', text)}
           style={styles.input}
           keyboardType="numeric"
-          left={<TextInput.Affix text="$" />}
+          left={<TextInput.Affix text="L." />}
         />
         
         <TextInput
@@ -251,7 +251,7 @@ const NuevoCierreScreen = () => {
           onChangeText={(text) => handleChange('transferencia', text)}
           style={styles.input}
           keyboardType="numeric"
-          left={<TextInput.Affix text="$" />}
+          left={<TextInput.Affix text="L." />}
         />
         
         <TextInput
@@ -260,7 +260,7 @@ const NuevoCierreScreen = () => {
           onChangeText={(text) => handleChange('credito', text)}
           style={styles.input}
           keyboardType="numeric"
-          left={<TextInput.Affix text="$" />}
+          left={<TextInput.Affix text="L." />}
         />
         
         <View style={styles.totalContainer}>

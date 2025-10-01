@@ -126,20 +126,20 @@ const DetalleCierreScreen = () => {
           <View style={styles.resumenContainer}>
             <View style={styles.resumenItem}>
               <Text style={styles.resumenLabel}>Total Ventas</Text>
-              <Text style={styles.resumenValue}>${cierre.totalVentas.toFixed(2)}</Text>
+              <Text style={styles.resumenValue}>L. {cierre.totalVentas.toFixed(2)}</Text>
             </View>
             
             <View style={styles.resumenItem}>
               <Text style={styles.resumenLabel}>Devoluciones</Text>
               <Text style={[styles.resumenValue, styles.devolucionesValue]}>
-                -${cierre.totalDevoluciones.toFixed(2)}
+                -L. {cierre.totalDevoluciones.toFixed(2)}
               </Text>
             </View>
             
             <View style={styles.resumenItem}>
               <Text style={styles.resumenLabel}>Total Neto</Text>
               <Text style={[styles.resumenValue, styles.totalNetoValue]}>
-                ${cierre.totalNeto.toFixed(2)}
+                L. {cierre.totalNeto.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -156,27 +156,27 @@ const DetalleCierreScreen = () => {
             
             <DataTable.Row>
               <DataTable.Cell>Efectivo</DataTable.Cell>
-              <DataTable.Cell numeric>${cierre.metodoPago.efectivo.toFixed(2)}</DataTable.Cell>
+              <DataTable.Cell numeric>L. {cierre.metodoPago.efectivo.toFixed(2)}</DataTable.Cell>
             </DataTable.Row>
             
             <DataTable.Row>
               <DataTable.Cell>Tarjeta</DataTable.Cell>
-              <DataTable.Cell numeric>${cierre.metodoPago.tarjeta.toFixed(2)}</DataTable.Cell>
+              <DataTable.Cell numeric>L. {cierre.metodoPago.tarjeta.toFixed(2)}</DataTable.Cell>
             </DataTable.Row>
             
             <DataTable.Row>
               <DataTable.Cell>Transferencia</DataTable.Cell>
-              <DataTable.Cell numeric>${cierre.metodoPago.transferencia.toFixed(2)}</DataTable.Cell>
+              <DataTable.Cell numeric>L. {cierre.metodoPago.transferencia.toFixed(2)}</DataTable.Cell>
             </DataTable.Row>
             
             <DataTable.Row>
               <DataTable.Cell>Crédito</DataTable.Cell>
-              <DataTable.Cell numeric>${cierre.metodoPago.credito.toFixed(2)}</DataTable.Cell>
+              <DataTable.Cell numeric>L. {cierre.metodoPago.credito.toFixed(2)}</DataTable.Cell>
             </DataTable.Row>
             
             <DataTable.Row style={styles.totalRow}>
               <DataTable.Cell>TOTAL</DataTable.Cell>
-              <DataTable.Cell numeric>${cierre.totalNeto.toFixed(2)}</DataTable.Cell>
+              <DataTable.Cell numeric>L. {cierre.totalNeto.toFixed(2)}</DataTable.Cell>
             </DataTable.Row>
           </DataTable>
           
@@ -200,7 +200,7 @@ const DetalleCierreScreen = () => {
                 <DataTable.Cell>{venta.hora}</DataTable.Cell>
                 <DataTable.Cell>{venta.cliente}</DataTable.Cell>
                 <DataTable.Cell>{venta.metodoPago}</DataTable.Cell>
-                <DataTable.Cell numeric>${(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</DataTable.Cell>
+                <DataTable.Cell numeric>L. {(venta.total !== undefined && venta.total !== null) ? parseFloat(venta.total).toFixed(2) : '0.00'}</DataTable.Cell>
               </DataTable.Row>
             ))}
           </DataTable>

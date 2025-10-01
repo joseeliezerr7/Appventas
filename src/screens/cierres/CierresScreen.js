@@ -118,15 +118,15 @@ const CierresScreen = () => {
           <View style={styles.montoContainer}>
             <View style={styles.montoItem}>
               <Text style={styles.montoLabel}>Ventas</Text>
-              <Text style={styles.montoValue}>${item.totalVentas.toFixed(2)}</Text>
+              <Text style={styles.montoValue}>L. {item.totalVentas.toFixed(2)}</Text>
             </View>
             <View style={styles.montoItem}>
               <Text style={styles.montoLabel}>Devoluciones</Text>
-              <Text style={styles.montoValue}>-${item.totalDevoluciones.toFixed(2)}</Text>
+              <Text style={styles.montoValue}>-L. {item.totalDevoluciones.toFixed(2)}</Text>
             </View>
             <View style={styles.montoItem}>
               <Text style={styles.montoLabel}>Total Neto</Text>
-              <Text style={[styles.montoValue, styles.montoTotal]}>${item.totalNeto.toFixed(2)}</Text>
+              <Text style={[styles.montoValue, styles.montoTotal]}>L. {item.totalNeto.toFixed(2)}</Text>
             </View>
           </View>
         </Card.Content>

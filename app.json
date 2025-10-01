@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "ventasapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -16,7 +15,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.joseeliezerr123.ventasapp"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +37,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "07d1d4aa-52c2-428d-868b-76266333f25f"
+      }
     }
   }
 }

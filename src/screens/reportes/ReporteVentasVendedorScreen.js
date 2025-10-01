@@ -37,23 +37,43 @@ const ReporteVentasVendedorScreen = () => {
   const cargarReporte = async (filtrosCustom = null) => {
     try {
       setLoading(true);
-      
-      const filtrosFinales = filtrosCustom || { ...filters, ...calcularFechasPorPeriodo(periodo) };
-      setFilters(filtrosFinales);
-      
-      const params = new URLSearchParams();
-      Object.entries(filtrosFinales).forEach(([key, value]) => {
-        if (value !== null && value !== '' && value !== undefined) {
-          params.append(key, value);
+
+      let params = new URLSearchParams();
+
+      if (filtrosCustom) {
+        // Si hay filtros custom, usar fechas específicas
+        Object.entries(filtrosCustom).forEach(([key, value]) => {
+          if (value !== null && value !== '' && value !== undefined) {
+            params.append(key, value);
+          }
+        });
+        setFilters(filtrosCustom);
+      } else {
+        // Si no hay filtros custom, usar período
+        if (periodo) {
+          params.append('periodo', periodo.toLowerCase().replace(' ', '_'));
+        } else {
+          params.append('periodo', 'este_mes');
         }
-      });
+      }
+
+      console.log('Cargando reporte de ventas por vendedor con período:', periodo || 'este_mes');
 
       const response = await api.get(`/reportes/ventas-por-vendedor?${params.toString()}`);
-      setData(response.data || []);
-      setFilteredData(response.data || []);
+      console.log('Respuesta del reporte de vendedores:', response);
+      console.log('Tipo de response:', typeof response);
+      console.log('Es Array response:', Array.isArray(response));
+
+      // api.get() devuelve los datos directamente, no envueltos en .data
+      const vendedoresData = Array.isArray(response) ? response : [];
+
+      console.log('Datos finales a usar:', vendedoresData);
+      setData(vendedoresData);
+      setFilteredData(vendedoresData);
     } catch (error) {
       console.error('Error al cargar reporte:', error);
-      Alert.alert('Error', 'No se pudo cargar el reporte de ventas por vendedor');
+      console.error('Detalles del error:', error.response?.data || error.message);
+      Alert.alert('Error', 'No se pudo cargar el reporte de ventas por vendedor: ' + (error.message || 'Error desconocido'));
       setData([]);
       setFilteredData([]);
     } finally {

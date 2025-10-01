@@ -30,6 +30,7 @@ import ProveedoresScreen from '../screens/proveedores/ProveedoresScreen';
 import NuevoProveedorScreen from '../screens/proveedores/NuevoProveedorScreen';
 import ProveedorDetalleScreen from '../screens/proveedores/ProveedorDetalleScreen';
 import ReportesScreen from '../screens/reportes/ReportesScreen';
+import ReporteGananciasScreen from '../screens/reportes/ReporteGananciasScreen';
 import ReporteVentasProductoScreen from '../screens/reportes/ReporteVentasProductoScreen';
 import ReporteVentasClienteScreen from '../screens/reportes/ReporteVentasClienteScreen';
 import ReporteVentasVendedorScreen from '../screens/reportes/ReporteVentasVendedorScreen';
@@ -41,6 +42,9 @@ import NuevoCierreScreen from '../screens/cierres/NuevoCierreScreen';
 import UsuariosScreen from '../screens/usuarios/UsuariosScreen';
 import NuevoUsuarioScreen from '../screens/usuarios/NuevoUsuarioScreen';
 import EditarUsuarioScreen from '../screens/usuarios/EditarUsuarioScreen';
+
+// Pantallas de ajustes
+import AjustesScreen from '../screens/ajustes/AjustesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,6 +101,7 @@ const DevolucionesNavigator = () => (
 const ReportesNavigator = () => (
   <Stack.Navigator>
     <Stack.Screen name="ReportesList" component={ReportesScreen} options={{ title: 'Reportes' }} />
+    <Stack.Screen name="ReporteGanancias" component={ReporteGananciasScreen} options={{ title: 'Reporte de Ganancias' }} />
     <Stack.Screen name="ReporteVentasProducto" component={ReporteVentasProductoScreen} options={{ title: 'Ventas por Producto' }} />
     <Stack.Screen name="ReporteVentasCliente" component={ReporteVentasClienteScreen} options={{ title: 'Ventas por Cliente' }} />
     <Stack.Screen name="ReporteVentasVendedor" component={ReporteVentasVendedorScreen} options={{ title: 'Ventas por Vendedor' }} />
@@ -140,6 +145,8 @@ const TabNavigator = () => (
           iconName = focused ? 'bar-chart' : 'bar-chart-outline';
         } else if (route.name === 'Devoluciones') {
           iconName = focused ? 'return-down-back' : 'return-down-back-outline';
+        } else if (route.name === 'Ajustes') {
+          iconName = focused ? 'settings' : 'settings-outline';
         }
 
         return <Ionicons name={iconName} size={size} color={color} />;
@@ -155,6 +162,7 @@ const TabNavigator = () => (
     <Tab.Screen name="Inventario" component={InventarioNavigator} options={{ headerShown: false }} />
     <Tab.Screen name="Rutas" component={RutasNavigator} options={{ headerShown: false }} />
     <Tab.Screen name="Reportes" component={ReportesNavigator} options={{ headerShown: false }} />
+    <Tab.Screen name="Ajustes" component={AjustesScreen} options={{ headerShown: true, title: 'Ajustes' }} />
   </Tab.Navigator>
 );
 
