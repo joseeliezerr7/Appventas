@@ -4,11 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_URLS = {
   localhost: 'http://localhost:3001/api',
   emulator: 'http://10.0.2.2:3001/api',  // Para emuladores Android
-  device: 'http://192.168.1.100:3001/api'  // Cambia esto a la IP de tu computadora en la red
+  device: 'http://192.168.1.100:3001/api',  // Para dispositivos en red local
+  server: 'http://207.244.237.123:3001/api'  // Servidor de producción
 };
 
-// Usa la URL del emulador por defecto, cambia según sea necesario
-const API_URL = API_URLS.emulator;
+// Usa la URL del servidor por defecto
+const API_URL = API_URLS.server;
 
 // Reemplaza la IP anterior con la dirección IP de tu computadora en la red local
 // Puedes encontrarla ejecutando 'ipconfig' en Windows o 'ifconfig' en macOS/Linux
