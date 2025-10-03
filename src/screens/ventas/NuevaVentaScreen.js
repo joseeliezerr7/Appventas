@@ -34,6 +34,7 @@ const NuevaVentaScreen = () => {
   
   const [showFacturaModal, setShowFacturaModal] = useState(false);
   const [facturaData, setFacturaData] = useState(null);
+  const [printSize, setPrintSize] = useState('factura'); // 'factura' o 'ticket'
 
   useEffect(() => {
     const loadData = async () => {
@@ -332,7 +333,7 @@ const NuevaVentaScreen = () => {
   // Función para generar el HTML de la factura
   const generateFacturaHTML = (data) => {
     if (!data) return '';
-    
+
     const itemsHTML = (data.items || []).map(item => `
       <tr>
         <td>${item.producto?.nombre || 'Producto sin nombre'}</td>
@@ -341,7 +342,7 @@ const NuevaVentaScreen = () => {
         <td>${formatCurrency(item.subtotal)}</td>
       </tr>
     `).join('');
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -375,18 +376,18 @@ const NuevaVentaScreen = () => {
                 <div><span class="factura-label">Hora:</span> ${data.hora}</div>
               </div>
             </div>
-            
+
             <div class="factura-info">
               <div class="factura-label">Cliente:</div>
               <div>${data.cliente?.nombre || 'Cliente sin nombre'}</div>
               <div>${data.cliente?.telefono || ''}</div>
             </div>
-            
+
             <div class="factura-info">
               <div class="factura-label">Vendedor:</div>
               <div>${data.vendedor || 'Administrador'}</div>
             </div>
-            
+
             <table>
               <thead>
                 <tr>
@@ -406,14 +407,178 @@ const NuevaVentaScreen = () => {
                 </tr>
               </tfoot>
             </table>
-            
+
             <div class="factura-info">
               <div><span class="factura-label">Método de Pago:</span> ${data.metodo_pago}</div>
               ${data.notas ? `<div><span class="factura-label">Notas:</span> ${data.notas}</div>` : ''}
             </div>
-            
+
             <div class="footer">
               <p>Gracias por su compra</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
+  // Función para generar el HTML del ticket (formato pequeño)
+  const generateTicketHTML = (data) => {
+    if (!data) return '';
+
+    const itemsHTML = (data.items || []).map(item => `
+      <div class="ticket-item">
+        <div class="item-name">${item.producto?.nombre || 'Producto'}</div>
+        <div class="item-details">
+          <span>${item.cantidad} ${item.unidad?.nombre || 'Un'} x ${formatCurrency(item.precio_unitario)}</span>
+          <span class="item-total">${formatCurrency(item.subtotal)}</span>
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              margin: 0;
+              padding: 10px;
+              font-size: 11px;
+              width: 80mm;
+            }
+            .ticket-container {
+              width: 100%;
+            }
+            .ticket-header {
+              text-align: center;
+              margin-bottom: 10px;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 10px;
+            }
+            .ticket-title {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 3px;
+            }
+            .ticket-subtitle {
+              font-size: 10px;
+              margin-bottom: 5px;
+            }
+            .ticket-info {
+              margin-bottom: 10px;
+              font-size: 10px;
+            }
+            .ticket-info-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 2px;
+            }
+            .ticket-items {
+              border-top: 1px dashed #000;
+              border-bottom: 1px dashed #000;
+              padding: 10px 0;
+              margin: 10px 0;
+            }
+            .ticket-item {
+              margin-bottom: 8px;
+            }
+            .item-name {
+              font-weight: bold;
+              margin-bottom: 2px;
+            }
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 10px;
+            }
+            .item-total {
+              font-weight: bold;
+            }
+            .ticket-total {
+              border-top: 1px dashed #000;
+              padding-top: 10px;
+              margin-top: 10px;
+            }
+            .total-line {
+              display: flex;
+              justify-content: space-between;
+              font-size: 14px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .ticket-footer {
+              text-align: center;
+              margin-top: 15px;
+              font-size: 10px;
+              border-top: 1px dashed #000;
+              padding-top: 10px;
+            }
+            .label {
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-container">
+            <div class="ticket-header">
+              <div class="ticket-title">TICKET DE VENTA</div>
+              <div class="ticket-subtitle">No. ${data.venta_id}</div>
+            </div>
+
+            <div class="ticket-info">
+              <div class="ticket-info-line">
+                <span class="label">Fecha:</span>
+                <span>${data.fecha}</span>
+              </div>
+              <div class="ticket-info-line">
+                <span class="label">Hora:</span>
+                <span>${data.hora}</span>
+              </div>
+            </div>
+
+            <div class="ticket-info">
+              <div class="label">Cliente:</div>
+              <div>${data.cliente?.nombre || 'Cliente'}</div>
+              <div>${data.cliente?.telefono || ''}</div>
+            </div>
+
+            <div class="ticket-items">
+              ${itemsHTML}
+            </div>
+
+            <div class="ticket-total">
+              <div class="total-line">
+                <span>TOTAL:</span>
+                <span>${formatCurrency(data.total)}</span>
+              </div>
+              <div class="ticket-info-line">
+                <span class="label">Pago:</span>
+                <span>${data.metodo_pago}</span>
+              </div>
+              ${data.notas ? `
+              <div style="margin-top: 10px;">
+                <div class="label">Notas:</div>
+                <div style="font-size: 9px;">${data.notas}</div>
+              </div>
+              ` : ''}
+            </div>
+
+            <div class="ticket-info" style="margin-top: 10px;">
+              <div class="ticket-info-line">
+                <span class="label">Vendedor:</span>
+                <span>${data.vendedor || 'Admin'}</span>
+              </div>
+            </div>
+
+            <div class="ticket-footer">
+              <div>¡Gracias por su compra!</div>
             </div>
           </div>
         </body>
@@ -425,22 +590,24 @@ const NuevaVentaScreen = () => {
   const generatePDF = async () => {
     try {
       if (!facturaData) return;
-      
+
       setLoading(true);
-      
-      // Generar el HTML de la factura
-      const html = generateFacturaHTML(facturaData);
-      
+
+      // Generar el HTML según el tamaño seleccionado
+      const html = printSize === 'ticket'
+        ? generateTicketHTML(facturaData)
+        : generateFacturaHTML(facturaData);
+
       // Crear el PDF
       const { uri } = await Print.printToFileAsync({ html });
-      
+
       // Compartir el PDF
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri);
       } else {
         Alert.alert('Error', 'La función de compartir no está disponible en este dispositivo');
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error al generar PDF:', error);
@@ -943,11 +1110,34 @@ const NuevaVentaScreen = () => {
                   )}
                 </>
               )}
+
+                  <Divider style={styles.facturaDivider} />
+
+                  <View style={styles.printSizeSelector}>
+                    <Text style={styles.facturaLabel}>Tamaño de Impresión:</Text>
+                    <RadioButton.Group
+                      onValueChange={value => setPrintSize(value)}
+                      value={printSize}
+                    >
+                      <View style={styles.radioGroup}>
+                        <View style={styles.radioOption}>
+                          <RadioButton value="factura" />
+                          <Text>Factura (Tamaño Carta)</Text>
+                        </View>
+                        <View style={styles.radioOption}>
+                          <RadioButton value="ticket" />
+                          <Text>Ticket (80mm)</Text>
+                        </View>
+                      </View>
+                    </RadioButton.Group>
+                  </View>
+                </>
+              )}
             </Card.Content>
             <Card.Actions>
               <Button onPress={() => setShowFacturaModal(false)}>Cerrar</Button>
-              <Button 
-                mode="contained" 
+              <Button
+                mode="contained"
                 onPress={generatePDF}
                 loading={loading}
                 disabled={loading}
@@ -1074,6 +1264,10 @@ const styles = StyleSheet.create({
   },
   facturaVendedorInfo: {
     marginTop: 10,
+  },
+  printSizeSelector: {
+    marginTop: 15,
+    marginBottom: 10,
   },
   modalContainer: {
     padding: 20,
