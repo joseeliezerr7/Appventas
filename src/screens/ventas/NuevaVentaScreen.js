@@ -1108,8 +1108,6 @@ const NuevaVentaScreen = () => {
                       <Text>{facturaData.notas}</Text>
                     </View>
                   )}
-                </>
-              )}
 
                   <Divider style={styles.facturaDivider} />
 
