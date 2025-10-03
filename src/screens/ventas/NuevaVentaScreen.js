@@ -4,6 +4,7 @@ import { Text, Button, Card, TextInput, List, Divider, ActivityIndicator, IconBu
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
 
 const NuevaVentaScreen = () => {
@@ -622,21 +623,31 @@ const NuevaVentaScreen = () => {
       Alert.alert('Error', 'Debe seleccionar un cliente');
       return;
     }
-    
+
     // Validar que haya productos en la venta
     if (venta.items.length === 0) {
       Alert.alert('Error', 'Debe agregar al menos un producto');
       return;
     }
-    
+
     try {
       setLoading(true);
       console.log('Guardando venta...');
-      
+
+      // Obtener el usuario autenticado
+      const userStr = await AsyncStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+
+      if (!user || !user.id) {
+        Alert.alert('Error', 'No se pudo obtener la información del usuario. Por favor, inicie sesión nuevamente.');
+        setLoading(false);
+        return;
+      }
+
       // Preparar los datos para enviar al backend
       const ventaData = {
         cliente_id: venta.cliente.id,
-        usuario_id: 1, // ID del usuario autenticado (por ahora hardcodeado)
+        usuario_id: user.id,
         items: venta.items.map(item => ({
           producto_id: item.producto.id,
           cantidad: item.cantidad,
