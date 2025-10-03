@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, TextInput, Avatar, Divider, ActivityIndicator, List } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Avatar, Button, Card, Divider, List, Text, TextInput } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AjustesScreen = () => {
@@ -368,7 +368,7 @@ const AjustesScreen = () => {
           />
           <List.Item
             title="Desarrollado por"
-            description="Tu Empresa"
+            description="Solutechn"
             left={props => <List.Icon {...props} icon="code-tags" />}
           />
         </Card.Content>
