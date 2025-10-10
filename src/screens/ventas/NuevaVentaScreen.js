@@ -935,9 +935,6 @@ const NuevaVentaScreen = () => {
                     >
                       <View style={styles.productItemContent}>
                         <Text style={styles.productItemTitle}>{producto.nombre}</Text>
-                        <Text style={styles.productItemDescription}>
-                          {formatCurrency(producto.precio_venta || producto.precio || 0)} - Stock: {producto.stock || 0}
-                        </Text>
                       </View>
                       <View style={styles.addButton}>
                         <Text style={styles.addButtonText}>+</Text>
@@ -963,6 +960,7 @@ const NuevaVentaScreen = () => {
               {venta.items.map((item, index) => (
                 <View key={index} style={styles.itemRow}>
                   <View style={styles.itemInfo}>
+                    <Text style={styles.itemNombre}>{item.producto.nombre}</Text>
                     <Text style={styles.itemPrecio}>Precio: {formatCurrency(item.precio_unitario)}</Text>
                     <Text style={styles.itemUnidad}>{item.unidad?.nombre || 'Unidad'}</Text>
                     <Text style={styles.itemSubtotal}>Subtotal: {formatCurrency(item.subtotal)}</Text>
@@ -1463,6 +1461,12 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 2,
+  },
+  itemNombre: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
   },
   itemPrecio: {
     fontSize: 14,
