@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Linking, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Text, Card, Button, IconButton, Divider, List, Dialog, Portal, TextInput } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -173,6 +173,18 @@ const ClienteDetalleScreen = () => {
     navigation.navigate('NuevaVenta', { cliente });
   };
 
+  const handleOpenMaps = () => {
+    if (cliente.latitud && cliente.longitud) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${cliente.latitud},${cliente.longitud}`;
+      Linking.openURL(url).catch(err => {
+        console.error('Error al abrir Google Maps:', err);
+        Alert.alert('Error', 'No se pudo abrir Google Maps');
+      });
+    } else {
+      Alert.alert('Ubicación no disponible', 'Este cliente no tiene coordenadas GPS registradas');
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Card style={styles.infoCard}>
@@ -203,7 +215,19 @@ const ClienteDetalleScreen = () => {
             left={props => <List.Icon {...props} icon="map-marker" />}
             style={styles.listItem}
           />
-          
+
+          {cliente.latitud && cliente.longitud && (
+            <TouchableOpacity onPress={handleOpenMaps}>
+              <List.Item
+                title="Ubicación GPS"
+                description={`Lat: ${parseFloat(cliente.latitud).toFixed(6)}, Long: ${parseFloat(cliente.longitud).toFixed(6)}`}
+                left={props => <List.Icon {...props} icon="map-marker-radius" color="#007bff" />}
+                right={props => <List.Icon {...props} icon="open-in-new" color="#007bff" />}
+                style={styles.listItem}
+              />
+            </TouchableOpacity>
+          )}
+
           {cliente.ciudad && (
             <List.Item
               title="Ciudad"
@@ -308,7 +332,28 @@ const ClienteDetalleScreen = () => {
               style={styles.dialogInput}
               multiline
             />
-            
+
+            <View style={styles.formRow}>
+              <View style={styles.formColumn}>
+                <TextInput
+                  label="Latitud"
+                  value={editedCliente.latitud ? editedCliente.latitud.toString() : ''}
+                  onChangeText={(text) => setEditedCliente({ ...editedCliente, latitud: text ? parseFloat(text) : null })}
+                  style={styles.dialogInput}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.formColumn}>
+                <TextInput
+                  label="Longitud"
+                  value={editedCliente.longitud ? editedCliente.longitud.toString() : ''}
+                  onChangeText={(text) => setEditedCliente({ ...editedCliente, longitud: text ? parseFloat(text) : null })}
+                  style={styles.dialogInput}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+
             <TextInput
               label="Ciudad"
               value={editedCliente.ciudad || ''}

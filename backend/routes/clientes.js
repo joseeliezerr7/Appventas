@@ -40,18 +40,18 @@ router.get('/:id', (req, res, next) => req.app.locals.authenticateToken(req, res
 // POST /api/clientes - Crear un nuevo cliente
 router.post('/', (req, res, next) => req.app.locals.authenticateToken(req, res, next), async (req, res) => {
   try {
-    const { nombre, direccion, telefono, email, ciudad, notas } = req.body;
+    const { nombre, direccion, telefono, email, ciudad, notas, latitud, longitud } = req.body;
     const creado_por = req.user.id; // Usuario autenticado
-    
+
     // Validar datos requeridos
     if (!nombre) {
       return res.status(400).json({ message: 'El nombre del cliente es obligatorio' });
     }
-    
+
     const [result] = await req.app.locals.pool.query(`
-      INSERT INTO clientes (nombre, telefono, email, direccion, ciudad, notas, creado_por)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [nombre, telefono || null, email || null, direccion || null, ciudad || null, notas || null, creado_por]);
+      INSERT INTO clientes (nombre, telefono, email, direccion, latitud, longitud, ciudad, notas, creado_por)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [nombre, telefono || null, email || null, direccion || null, latitud || null, longitud || null, ciudad || null, notas || null, creado_por]);
     
     console.log(`Cliente creado con ID: ${result.insertId}`);
     
@@ -71,28 +71,28 @@ router.post('/', (req, res, next) => req.app.locals.authenticateToken(req, res, 
 router.put('/:id', (req, res, next) => req.app.locals.authenticateToken(req, res, next), async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, direccion, telefono, email, ciudad, notas } = req.body;
-    
+    const { nombre, direccion, telefono, email, ciudad, notas, latitud, longitud } = req.body;
+
     // Validar datos requeridos
     if (!nombre) {
       return res.status(400).json({ message: 'El nombre del cliente es obligatorio' });
     }
-    
+
     // Verificar que el cliente existe
     const [clienteExistente] = await req.app.locals.pool.query(`
       SELECT * FROM clientes WHERE id = ?
     `, [id]);
-    
+
     if (clienteExistente.length === 0) {
       return res.status(404).json({ message: `Cliente con ID ${id} no encontrado` });
     }
-    
+
     // Actualizar cliente
     await req.app.locals.pool.query(`
       UPDATE clientes
-      SET nombre = ?, telefono = ?, email = ?, direccion = ?, ciudad = ?, notas = ?
+      SET nombre = ?, telefono = ?, email = ?, direccion = ?, latitud = ?, longitud = ?, ciudad = ?, notas = ?
       WHERE id = ?
-    `, [nombre, telefono || null, email || null, direccion || null, ciudad || null, notas || null, id]);
+    `, [nombre, telefono || null, email || null, direccion || null, latitud || null, longitud || null, ciudad || null, notas || null, id]);
     
     console.log(`Cliente con ID ${id} actualizado`);
     
