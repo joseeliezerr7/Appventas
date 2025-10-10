@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 
 const AjustesScreen = () => {
   const navigation = useNavigation();
@@ -18,6 +19,14 @@ const AjustesScreen = () => {
     telefono: user?.telefono || '',
     avatar: user?.avatar || null
   });
+  const [negocioData, setNegocioData] = useState({
+    nombre_negocio: '',
+    telefono: '',
+    direccion: '',
+    email: '',
+    rtn: ''
+  });
+  const [savingNegocio, setSavingNegocio] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
@@ -25,7 +34,25 @@ const AjustesScreen = () => {
       headerShown: true,
     });
     loadCurrentLogo();
+    loadConfiguracionNegocio();
   }, [navigation]);
+
+  const loadConfiguracionNegocio = async () => {
+    try {
+      const config = await api.getConfiguracion();
+      console.log('Configuración del negocio cargada:', config);
+      setNegocioData({
+        nombre_negocio: config.nombre_negocio || '',
+        telefono: config.telefono || '',
+        direccion: config.direccion || '',
+        email: config.email || '',
+        rtn: config.rtn || ''
+      });
+    } catch (error) {
+      console.error('Error al cargar configuración del negocio:', error);
+      // No mostramos alerta para no interrumpir la experiencia
+    }
+  };
 
   const loadCurrentLogo = async () => {
     try {
@@ -45,6 +72,35 @@ const AjustesScreen = () => {
       ...profileData,
       [field]: value
     });
+  };
+
+  const handleChangeNegocioData = (field, value) => {
+    setNegocioData({
+      ...negocioData,
+      [field]: value
+    });
+  };
+
+  const saveNegocioChanges = async () => {
+    try {
+      setSavingNegocio(true);
+
+      // Validar que el nombre del negocio no esté vacío
+      if (!negocioData.nombre_negocio.trim()) {
+        Alert.alert('Error', 'El nombre del negocio es obligatorio.');
+        return;
+      }
+
+      // Guardar la configuración
+      await api.updateConfiguracion(negocioData);
+
+      Alert.alert('Éxito', 'Configuración del negocio actualizada correctamente.');
+    } catch (error) {
+      console.error('Error al guardar configuración del negocio:', error);
+      Alert.alert('Error', 'No se pudo actualizar la configuración del negocio.');
+    } finally {
+      setSavingNegocio(false);
+    }
   };
 
   const selectLogo = async () => {
@@ -311,6 +367,74 @@ const AjustesScreen = () => {
           </Button>
         </Card.Content>
       </Card>
+
+      {/* Configuración del Negocio */}
+      {(user?.rol === 'admin' || user?.rol === 'supervisor') && (
+        <Card style={styles.card}>
+          <Card.Title
+            title="Configuración del Negocio"
+            subtitle="Datos que aparecerán en facturas y tickets"
+            left={(props) => <Avatar.Icon {...props} icon="store" />}
+          />
+          <Card.Content>
+            <TextInput
+              label="Nombre del Negocio *"
+              value={negocioData.nombre_negocio}
+              onChangeText={(text) => handleChangeNegocioData('nombre_negocio', text)}
+              style={styles.input}
+              left={<TextInput.Icon icon="store" />}
+            />
+
+            <TextInput
+              label="Teléfono"
+              value={negocioData.telefono}
+              onChangeText={(text) => handleChangeNegocioData('telefono', text)}
+              style={styles.input}
+              keyboardType="phone-pad"
+              left={<TextInput.Icon icon="phone" />}
+            />
+
+            <TextInput
+              label="Dirección"
+              value={negocioData.direccion}
+              onChangeText={(text) => handleChangeNegocioData('direccion', text)}
+              style={styles.input}
+              multiline
+              numberOfLines={2}
+              left={<TextInput.Icon icon="map-marker" />}
+            />
+
+            <TextInput
+              label="Correo Electrónico"
+              value={negocioData.email}
+              onChangeText={(text) => handleChangeNegocioData('email', text)}
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              left={<TextInput.Icon icon="email" />}
+            />
+
+            <TextInput
+              label="RTN (opcional)"
+              value={negocioData.rtn}
+              onChangeText={(text) => handleChangeNegocioData('rtn', text)}
+              style={styles.input}
+              left={<TextInput.Icon icon="card-account-details" />}
+            />
+
+            <Button
+              mode="contained"
+              onPress={saveNegocioChanges}
+              style={styles.saveButton}
+              loading={savingNegocio}
+              disabled={savingNegocio}
+              icon="content-save"
+            >
+              Guardar Configuración
+            </Button>
+          </Card.Content>
+        </Card>
+      )}
 
       {/* Administración del Sistema */}
       {(user?.rol === 'admin' || user?.rol === 'supervisor') && (
