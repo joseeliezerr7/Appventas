@@ -531,6 +531,17 @@ const api = {
       body: JSON.stringify(profileData)
     });
   },
+
+  // Configuración del negocio
+  getConfiguracion() {
+    return fetchWithToken('/configuracion');
+  },
+  updateConfiguracion(configuracionData) {
+    return fetchWithToken('/configuracion', {
+      method: 'PUT',
+      body: JSON.stringify(configuracionData)
+    });
+  },
 };
 
 export default api;

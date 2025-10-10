@@ -15,6 +15,7 @@ const DetalleVentaScreen = () => {
   const [loading, setLoading] = useState(true);
   const [venta, setVenta] = useState(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [configuracionNegocio, setConfiguracionNegocio] = useState(null);
 
   const getEstadoColor = (estado) => {
     switch (estado) {
@@ -90,7 +91,17 @@ const DetalleVentaScreen = () => {
 
   useEffect(() => {
     loadVentaDetalle();
+    loadConfiguracion();
   }, [loadVentaDetalle]);
+
+  const loadConfiguracion = async () => {
+    try {
+      const config = await api.getConfiguracion();
+      setConfiguracionNegocio(config);
+    } catch (error) {
+      console.error('Error al cargar configuración:', error);
+    }
+  };
 
   // Función para generar el HTML del ticket
   const generateTicketHTML = (ventaData) => {
@@ -163,8 +174,11 @@ const DetalleVentaScreen = () => {
       </head>
       <body>
         <div class="header">
-          <h2>FACTURA</h2>
-          <p>Venta #${ventaData.id}</p>
+          <h2>${configuracionNegocio?.nombre_negocio || 'MI NEGOCIO'}</h2>
+          ${configuracionNegocio?.telefono ? `<p>Tel: ${configuracionNegocio.telefono}</p>` : ''}
+          ${configuracionNegocio?.direccion ? `<p>${configuracionNegocio.direccion}</p>` : ''}
+          ${configuracionNegocio?.rtn ? `<p>RTN: ${configuracionNegocio.rtn}</p>` : ''}
+          <p style="margin-top: 10px;">Venta #${ventaData.id}</p>
           <p>Fecha: ${ventaData.fecha}</p>
         </div>
         
