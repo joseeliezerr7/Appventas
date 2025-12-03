@@ -6,13 +6,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '../../utils/formatters';
 import api from '../../services/api';
 import { exportService } from '../../services/exportService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ReportesScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingResumen, setLoadingResumen] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedPeriodo, setSelectedPeriodo] = useState('Este mes');
+
+  // Verificar permisos de acceso
+  const canAccessReports = user && (user.rol === 'admin' || user.rol === 'supervisor' || user.rol === 'gerente');
+
+  // Si el usuario no tiene permisos, mostrar mensaje de acceso denegado
+  if (!canAccessReports) {
+    return (
+      <View style={styles.accessDeniedContainer}>
+        <Ionicons name="lock-closed-outline" size={80} color="#999" />
+        <Text style={styles.accessDeniedTitle}>Acceso Restringido</Text>
+        <Text style={styles.accessDeniedText}>
+          No tienes permisos para acceder a los reportes.
+        </Text>
+        <Text style={styles.accessDeniedText}>
+          Contacta al administrador si necesitas acceso.
+        </Text>
+      </View>
+    );
+  }
 
   const periodos = ['Hoy', 'Esta semana', 'Este mes', 'Último trimestre', 'Este año'];
 
@@ -361,6 +382,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
     padding: 16,
+  },
+  accessDeniedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 40,
+  },
+  accessDeniedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  accessDeniedText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   title: {
     fontSize: 24,

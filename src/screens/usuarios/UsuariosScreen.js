@@ -2,17 +2,39 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
 import { Text, Card, FAB, List, Divider, ActivityIndicator, Button, IconButton, Searchbar, Chip } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const UsuariosScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredUsuarios, setFilteredUsuarios] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('todos'); // todos, admin, vendedor, supervisor, gerente
+
+  // Verificar permisos de acceso
+  const canManageUsers = user && (user.rol === 'admin' || user.rol === 'supervisor');
+
+  // Si el usuario no tiene permisos, mostrar mensaje de acceso denegado
+  if (!canManageUsers) {
+    return (
+      <View style={styles.accessDeniedContainer}>
+        <Ionicons name="lock-closed-outline" size={80} color="#999" />
+        <Text style={styles.accessDeniedTitle}>Acceso Restringido</Text>
+        <Text style={styles.accessDeniedText}>
+          No tienes permisos para gestionar usuarios.
+        </Text>
+        <Text style={styles.accessDeniedText}>
+          Contacta al administrador si necesitas acceso.
+        </Text>
+      </View>
+    );
+  }
 
   const cargarUsuarios = async () => {
     try {
@@ -350,6 +372,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  accessDeniedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 40,
+  },
+  accessDeniedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  accessDeniedText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   scrollView: {
     flex: 1,

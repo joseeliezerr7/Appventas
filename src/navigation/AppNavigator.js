@@ -125,46 +125,55 @@ const UsuariosNavigator = () => (
 );
 
 // Tab Navigator principal
-const TabNavigator = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused, color, size }) => {
-        let iconName;
+const TabNavigator = () => {
+  const { user } = useAuth();
 
-        if (route.name === 'Home') {
-          iconName = focused ? 'home' : 'home-outline';
-        } else if (route.name === 'Clientes') {
-          iconName = focused ? 'people' : 'people-outline';
-        } else if (route.name === 'Ventas') {
-          iconName = focused ? 'cart' : 'cart-outline';
-        } else if (route.name === 'Inventario') {
-          iconName = focused ? 'cube' : 'cube-outline';
-        } else if (route.name === 'Rutas') {
-          iconName = focused ? 'map' : 'map-outline';
-        } else if (route.name === 'Reportes') {
-          iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-        } else if (route.name === 'Devoluciones') {
-          iconName = focused ? 'return-down-back' : 'return-down-back-outline';
-        } else if (route.name === 'Ajustes') {
-          iconName = focused ? 'settings' : 'settings-outline';
-        }
+  // Determinar si el usuario puede acceder a reportes
+  const canAccessReports = user && (user.rol === 'admin' || user.rol === 'supervisor' || user.rol === 'gerente');
 
-        return <Ionicons name={iconName} size={size} color={color} />;
-      },
-      tabBarActiveTintColor: '#007bff',
-      tabBarInactiveTintColor: 'gray',
-    })}
-  >
-    <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-    <Tab.Screen name="Clientes" component={ClientesNavigator} options={{ headerShown: false }} />
-    <Tab.Screen name="Ventas" component={VentasNavigator} options={{ headerShown: false }} />
-    <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} options={{ headerShown: false }} />
-    <Tab.Screen name="Inventario" component={InventarioNavigator} options={{ headerShown: false }} />
-    <Tab.Screen name="Rutas" component={RutasNavigator} options={{ headerShown: false }} />
-    <Tab.Screen name="Reportes" component={ReportesNavigator} options={{ headerShown: false }} />
-    <Tab.Screen name="Ajustes" component={AjustesScreen} options={{ headerShown: true, title: 'Ajustes' }} />
-  </Tab.Navigator>
-);
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Clientes') {
+            iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'Ventas') {
+            iconName = focused ? 'cart' : 'cart-outline';
+          } else if (route.name === 'Inventario') {
+            iconName = focused ? 'cube' : 'cube-outline';
+          } else if (route.name === 'Rutas') {
+            iconName = focused ? 'map' : 'map-outline';
+          } else if (route.name === 'Reportes') {
+            iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+          } else if (route.name === 'Devoluciones') {
+            iconName = focused ? 'return-down-back' : 'return-down-back-outline';
+          } else if (route.name === 'Ajustes') {
+            iconName = focused ? 'settings' : 'settings-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#007bff',
+        tabBarInactiveTintColor: 'gray',
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Clientes" component={ClientesNavigator} options={{ headerShown: false }} />
+      <Tab.Screen name="Ventas" component={VentasNavigator} options={{ headerShown: false }} />
+      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} options={{ headerShown: false }} />
+      <Tab.Screen name="Inventario" component={InventarioNavigator} options={{ headerShown: false }} />
+      <Tab.Screen name="Rutas" component={RutasNavigator} options={{ headerShown: false }} />
+      {canAccessReports && (
+        <Tab.Screen name="Reportes" component={ReportesNavigator} options={{ headerShown: false }} />
+      )}
+      <Tab.Screen name="Ajustes" component={AjustesScreen} options={{ headerShown: true, title: 'Ajustes' }} />
+    </Tab.Navigator>
+  );
+};
 
 // Navigator principal
 const AppNavigator = () => {
@@ -174,12 +183,17 @@ const AppNavigator = () => {
     return null; // O una pantalla de carga
   }
 
+  // Determinar si el usuario puede gestionar usuarios
+  const canManageUsers = user && (user.rol === 'admin' || user.rol === 'supervisor');
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
           <Stack.Screen name="Main" component={TabNavigator} />
-          <Stack.Screen name="Usuarios" component={UsuariosNavigator} />
+          {canManageUsers && (
+            <Stack.Screen name="Usuarios" component={UsuariosNavigator} />
+          )}
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />
