@@ -453,22 +453,6 @@ const AjustesScreen = () => {
               onPress={() => navigation.navigate('Usuarios')}
               style={styles.adminMenuItem}
             />
-            <List.Item
-              title="Configuración del Sistema"
-              description="Ajustes avanzados del sistema"
-              left={props => <List.Icon {...props} icon="cog" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => Alert.alert('Próximamente', 'Esta función estará disponible pronto')}
-              style={styles.adminMenuItem}
-            />
-            <List.Item
-              title="Respaldo de Datos"
-              description="Exportar e importar datos del sistema"
-              left={props => <List.Icon {...props} icon="database-export" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => Alert.alert('Próximamente', 'Esta función estará disponible pronto')}
-              style={styles.adminMenuItem}
-            />
           </Card.Content>
         </Card>
       )}

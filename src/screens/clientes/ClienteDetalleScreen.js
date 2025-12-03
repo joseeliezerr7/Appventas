@@ -170,7 +170,11 @@ const ClienteDetalleScreen = () => {
   };
 
   const handleNuevaVenta = () => {
-    navigation.navigate('NuevaVenta', { cliente });
+    // Navegar al tab de Ventas y luego a NuevaVenta
+    navigation.navigate('Ventas', {
+      screen: 'NuevaVenta',
+      params: { cliente }
+    });
   };
 
   const handleOpenMaps = () => {

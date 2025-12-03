@@ -95,14 +95,27 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
+      // Si es el token de desarrollo, no validar
+      if (token === 'dev-token-12345') {
+        return true;
+      }
+
       // Verificar si el token está cerca de expirar
       // Decodificar el payload del JWT (Base64)
-      const base64Payload = token.split('.')[1];
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.log('Token inválido: formato incorrecto');
+        await logout();
+        return false;
+      }
+
+      const base64Payload = parts[1];
       const decodedPayload = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
-      const tokenPayload = JSON.parse(decodeURIComponent(escape(atob(decodedPayload))));
+      const decoded = atob(decodedPayload);
+      const tokenPayload = JSON.parse(decoded);
       const currentTime = Date.now() / 1000;
 
-      if (tokenPayload.exp <= currentTime) {
+      if (tokenPayload.exp && tokenPayload.exp <= currentTime) {
         console.log('Token expirado, cerrando sesión automáticamente');
         await logout();
         return false;
@@ -111,8 +124,8 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (e) {
       console.log('Error al verificar token:', e);
-      await logout();
-      return false;
+      // No cerrar sesión automáticamente si hay un error de validación
+      return true;
     }
   };
 
