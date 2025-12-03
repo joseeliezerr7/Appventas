@@ -243,26 +243,10 @@ const NuevaVentaScreen = () => {
     // Colapsar la lista y mostrar el producto seleccionado
     setShowProductosList(false);
     setProductoSearch(producto.nombre);
-    
-    // Verificar si el producto ya está en la lista
-    const existingItem = venta.items.find(item => item.producto.id === producto.id);
-    
-    if (existingItem) {
-      // Incrementar cantidad si ya existe
-      const updatedItems = venta.items.map(item => 
-        item.producto.id === producto.id 
-          ? { ...item, cantidad: item.cantidad + 1 } 
-          : item
-      );
-      
-      updateVentaWithItems(updatedItems);
-      
-      // Limpiar la búsqueda después de un breve delay para que el usuario vea la selección
-      setTimeout(() => setProductoSearch(''), 2000);
-    } else {
-      // Cargar unidades del producto para selección
-      cargarUnidadesProducto(producto);
-    }
+
+    // Siempre cargar unidades del producto para selección
+    // La verificación de duplicados se hará al seleccionar la unidad específica
+    cargarUnidadesProducto(producto);
   };
 
   const handleRemoveProducto = (index) => {
@@ -273,53 +257,75 @@ const NuevaVentaScreen = () => {
 
   const handleUpdateCantidad = (index, cantidad) => {
     if (cantidad <= 0) return;
-    
+
     const updatedItems = [...venta.items];
     const item = updatedItems[index];
-    
+
     // Verificar si hay suficiente stock
     if (item.unidad && item.unidad.stock < cantidad) {
       Alert.alert('Error', `No hay suficiente stock. Disponible: ${item.unidad.stock} ${item.unidad.nombre}`);
       return;
     }
-    
+
     item.cantidad = cantidad;
-    item.subtotal = item.precio_unitario * cantidad;
-    
+    // Redondear subtotal a 2 decimales
+    item.subtotal = Math.round(item.precio_unitario * cantidad * 100) / 100;
+
     updateVentaWithItems(updatedItems);
   };
 
   const updateVentaWithItems = (items) => {
-    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    // Calcular total y redondear a 2 decimales para evitar errores de punto flotante
+    const total = Math.round(items.reduce((sum, item) => sum + item.subtotal, 0) * 100) / 100;
     setVenta({ ...venta, items, total });
   };
   
   const handleSelectUnidad = (unidad) => {
     if (!unidad) return;
-    
+
     // console.log('=== SELECCIONANDO UNIDAD ===');
     // console.log('Unidad seleccionada:', JSON.stringify(unidad, null, 2));
-    
+
     setSelectedUnidad(unidad);
     setShowUnidadesModal(false);
-    
+
     if (selectedProducto) {
       const precio = unidad.precio_venta || unidad.precio || 0;
-      const newItem = {
-        producto: selectedProducto,
-        cantidad: 1,
-        precio_unitario: precio,
-        subtotal: precio,
-        unidad: unidad,
-        factor_conversion: unidad.factor_conversion || 1
-      };
-      
-      // console.log('=== ITEM CREADO ===');
-      // console.log('Nuevo item:', JSON.stringify(newItem, null, 2));
-      
-      const updatedItems = [...venta.items, newItem];
-      updateVentaWithItems(updatedItems);
-      
+
+      // Verificar si ya existe un item con el mismo producto Y la misma unidad
+      const existingItemIndex = venta.items.findIndex(item =>
+        item.producto.id === selectedProducto.id &&
+        item.unidad.id === unidad.id
+      );
+
+      if (existingItemIndex !== -1) {
+        // Si existe, incrementar cantidad y recalcular subtotal
+        const updatedItems = [...venta.items];
+        const existingItem = updatedItems[existingItemIndex];
+        existingItem.cantidad = existingItem.cantidad + 1;
+        // Redondear subtotal a 2 decimales
+        existingItem.subtotal = Math.round(existingItem.precio_unitario * existingItem.cantidad * 100) / 100;
+
+        updateVentaWithItems(updatedItems);
+      } else {
+        // Si no existe, crear nuevo item
+        const newItem = {
+          producto: selectedProducto,
+          cantidad: 1,
+          precio_unitario: precio,
+          // Redondear subtotal a 2 decimales
+          subtotal: Math.round(precio * 100) / 100,
+          unidad: unidad,
+          factor_conversion: unidad.factor_conversion || 1
+        };
+
+        // console.log('=== ITEM CREADO ===');
+        // console.log('Nuevo item:', JSON.stringify(newItem, null, 2));
+
+        const updatedItems = [...venta.items, newItem];
+        updateVentaWithItems(updatedItems);
+      }
+
       // Limpiar la búsqueda de productos después de agregar
       setTimeout(() => setProductoSearch(''), 1000);
     }

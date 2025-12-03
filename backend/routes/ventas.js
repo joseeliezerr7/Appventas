@@ -127,21 +127,22 @@ router.post('/', async (req, res) => {
       
       for (const item of items) {
         const { producto_id, cantidad, precio_unitario, unidad_id, factor_conversion } = item;
-        
+
         // console.log('=== PROCESANDO ITEM DE VENTA ===');
         // console.log('Item completo:', JSON.stringify(item, null, 2));
-        
+
         if (!producto_id || !cantidad || !precio_unitario) {
           throw new Error('Datos incompletos para un item de la venta');
         }
-        
+
         const subtotal = cantidad * precio_unitario;
         totalCalculado += subtotal;
-        
+
         // Obtener información de la unidad
         let unidad_nombre = null;
         let unidad_medida_id = null;
-        
+        let producto_unidad_id = unidad_id || null; // Guardar el ID de producto_unidades
+
         if (unidad_id) {
           // El frontend envía el ID de producto_unidades, necesitamos obtener el unidad_id real
           const [prodUnidadInfo] = await connection.query(`
@@ -150,22 +151,22 @@ router.post('/', async (req, res) => {
             LEFT JOIN unidades_medida um ON pu.unidad_id = um.id
             WHERE pu.id = ?
           `, [unidad_id]);
-          
+
           if (prodUnidadInfo.length > 0) {
             unidad_medida_id = prodUnidadInfo[0].unidad_id;
             unidad_nombre = prodUnidadInfo[0].unidad_nombre;
             // console.log(`Unidad encontrada: ID=${unidad_medida_id}, Nombre=${unidad_nombre}`);
           }
         }
-        
-        // Insertar detalle de venta con información de unidad
-        const insertValues = [ventaId, producto_id, cantidad, precio_unitario, subtotal, unidad_medida_id || null, factor_conversion || 1, unidad_nombre];
+
+        // Insertar detalle de venta con información de unidad Y producto_unidad_id
+        const insertValues = [ventaId, producto_id, cantidad, precio_unitario, subtotal, unidad_medida_id || null, producto_unidad_id, factor_conversion || 1, unidad_nombre];
         // console.log('=== INSERTANDO EN venta_detalles ===');
         // console.log('Valores a insertar:', insertValues);
-        
+
         await connection.query(`
-          INSERT INTO venta_detalles (venta_id, producto_id, cantidad, precio_unitario, subtotal, unidad_id, factor_conversion, unidad_nombre)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO venta_detalles (venta_id, producto_id, cantidad, precio_unitario, subtotal, unidad_id, producto_unidad_id, factor_conversion, unidad_nombre)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, insertValues);
         
         // Actualizar stock del producto
@@ -306,32 +307,61 @@ router.put('/:id/cancelar', async (req, res) => {
       
       // Restaurar el stock de los productos
       for (const detalle of detalles) {
-        const { producto_id, cantidad } = detalle;
-        
-        // Obtener la unidad base del producto
-        const [unidades] = await connection.query(`
-          SELECT * FROM producto_unidades 
-          WHERE producto_id = ? 
-          ORDER BY es_unidad_principal DESC, factor_conversion ASC 
-          LIMIT 1
-        `, [producto_id]);
-        
-        if (unidades.length > 0) {
-          const unidad = unidades[0];
-          const nuevoStock = unidad.stock + cantidad;
-          
-          // Actualizar stock de la unidad
-          await connection.query(`
-            UPDATE producto_unidades 
-            SET stock = ? 
+        const { producto_id, cantidad, producto_unidad_id } = detalle;
+
+        // Si tenemos el producto_unidad_id, restaurar a esa unidad específica
+        if (producto_unidad_id) {
+          const [unidadEspecifica] = await connection.query(`
+            SELECT * FROM producto_unidades
             WHERE id = ?
-          `, [nuevoStock, unidad.id]);
-          
-          console.log(`Stock restaurado para producto ${producto_id}, unidad ${unidad.id}: ${unidad.stock} -> ${nuevoStock}`);
-          
-          // Recalcular stock total
-          if (typeof req.app.locals.recalcularStockTotal === 'function') {
-            await req.app.locals.recalcularStockTotal(connection, producto_id);
+          `, [producto_unidad_id]);
+
+          if (unidadEspecifica.length > 0) {
+            const unidad = unidadEspecifica[0];
+            const nuevoStock = unidad.stock + cantidad;
+
+            // Actualizar stock de la unidad específica
+            await connection.query(`
+              UPDATE producto_unidades
+              SET stock = ?
+              WHERE id = ?
+            `, [nuevoStock, unidad.id]);
+
+            console.log(`Stock restaurado para producto ${producto_id}, unidad específica ${unidad.id}: ${unidad.stock} -> ${nuevoStock}`);
+
+            // Recalcular stock total
+            if (typeof req.app.locals.recalcularStockTotal === 'function') {
+              await req.app.locals.recalcularStockTotal(connection, producto_id);
+            }
+          }
+        } else {
+          // Fallback: Restaurar a la unidad base (para ventas antiguas sin producto_unidad_id)
+          console.log(`Advertencia: Venta sin producto_unidad_id, restaurando a unidad base`);
+
+          const [unidades] = await connection.query(`
+            SELECT * FROM producto_unidades
+            WHERE producto_id = ?
+            ORDER BY es_unidad_principal DESC, factor_conversion ASC
+            LIMIT 1
+          `, [producto_id]);
+
+          if (unidades.length > 0) {
+            const unidad = unidades[0];
+            const nuevoStock = unidad.stock + cantidad;
+
+            // Actualizar stock de la unidad
+            await connection.query(`
+              UPDATE producto_unidades
+              SET stock = ?
+              WHERE id = ?
+            `, [nuevoStock, unidad.id]);
+
+            console.log(`Stock restaurado para producto ${producto_id}, unidad base ${unidad.id}: ${unidad.stock} -> ${nuevoStock}`);
+
+            // Recalcular stock total
+            if (typeof req.app.locals.recalcularStockTotal === 'function') {
+              await req.app.locals.recalcularStockTotal(connection, producto_id);
+            }
           }
         }
       }
